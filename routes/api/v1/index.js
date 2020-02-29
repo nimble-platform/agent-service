@@ -3,6 +3,9 @@ const agentService = require('../../../services/agentService');
 var router = express.Router();
 var wLogger = require('../../../configs/logger');
 
+const SELLING_AGENT = "SELLING_AGENT";
+const BUYING_AGENT = "BUYING_AGENT";
+
 
 router.get('/hello', function (req, res, next) {
     res.json({
@@ -51,15 +54,35 @@ router.post('/deleteSellingAgent', function (req, res, next) {
 });
 
 
-router.post('/activateAgent', function (req, res, next) {
-    res.json({
-        "welcomeMSG": "hello"
+router.post('/activateSellingAgent', function (req, res, next) {
+    agentService.activateAgent(req.body.agentID, SELLING_AGENT).then(() => {
+        res.status(200);
+    }).catch((err) => {
+        res.status(400).json({msg: 'failed to activate the agent'})
     })
 });
 
-router.post('/deactivateAgent', function (req, res, next) {
-    res.json({
-        "welcomeMSG": "hello"
+router.post('/deactivateSellingAgent', function (req, res, next) {
+    agentService.deactivateAgent(req.body.agentID, SELLING_AGENT).then(() => {
+        res.status(200);
+    }).catch((err) => {
+        res.status(400).json({msg: 'failed to deactivate the agent'})
+    })
+});
+
+router.post('/activateBuyingAgent', function (req, res, next) {
+    agentService.activateAgent(req.body.agentID, BUYING_AGENT).then(() => {
+        res.status(200);
+    }).catch((err) => {
+        res.status(400).json({msg: 'failed to activate the agent'})
+    })
+});
+
+router.post('/deactivateBuyingAgent', function (req, res, next) {
+    agentService.deactivateAgent(req.body.agentID, BUYING_AGENT).then(() => {
+        res.status(200);
+    }).catch((err) => {
+        res.status(400).json({msg: 'failed to deactivate the agent'})
     })
 });
 
