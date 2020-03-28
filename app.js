@@ -22,7 +22,7 @@ mongoose.connect(config.mongoDb,{ useNewUrlParser: true,useUnifiedTopology: true
 var publicKey = fs.readFileSync('./configs/public.pub');
 
 //routes
-const apiRoutes = require('./routes/api/v1/index');
+const apiRoutes = require('./routes/api/v1/agentsRouter');
 
 var app = express();
 //to prevent cross origin resource errors by setting the relavent headers

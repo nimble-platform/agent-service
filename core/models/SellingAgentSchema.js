@@ -1,6 +1,5 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var enums = require('../enums/enums')
 
 var SellingAgentSchema = new Schema({
     id: String,

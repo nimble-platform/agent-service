@@ -2,14 +2,21 @@ const agentValidations = require('../core/validations/sellingAgentValidations');
 const CustomError = require('../core/exceptions/error')
 const loggerWinston = require('../configs/logger');
 const configs = require('../configs/config');
-var sellingAgentSchema = require('../core/models/SellingAgentSchema')
-var buyingAgentSchema = require('../core/models/BuyingAgentSchema')
-var randomstring = require("randomstring");
-var request = require('request');
+const sellingAgentSchema = require('../core/models/SellingAgentSchema')
+const buyingAgentSchema = require('../core/models/BuyingAgentSchema')
+const randomstring = require("randomstring");
+const request = require('request');
+const DBService = require('./DBService');
+const agentHelper = require('./agentHelper');
+const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 
-const checkIfValidPayment = ((qty, value, id, agent, dailyLimit, currentLimit) => {
 
-});
+// TODO Experimental for DEV
+const buyData = require('../core/data/firstOrder')
+
+// const checkIfValidPayment = ((qty, value, id, agent, dailyLimit, currentLimit) => {
+//
+// });
 
 const getDocument = (documentID, bearerToken) => {
     let options = {
@@ -28,11 +35,12 @@ const getDocument = (documentID, bearerToken) => {
         let response = JSON.parse(body);
         let lineItem = response.orderLine[0].lineItem;
         let qty = lineItem.quantity.value;
-        let price = lineItem.price.priceAmount.value
-        let id = lineItem.item.manufacturersItemIdentification.id
+        let price = lineItem.price.priceAmount.value;
+        let id = lineItem.item.manufacturersItemIdentification.id;
     });
 
 };
+
 
 function getProcessGroupData(processID, bearerToken) {
     var options = {
@@ -59,8 +67,65 @@ function getProcessGroupData(processID, bearerToken) {
     });
 }
 
-getProcessGroupData("1884588", configs.token);
+// getProcessGroupData("1884588", configs.token);
 
+
+const generateBAForForm = (body, isNew) => {
+    let agent = new sellingAgentSchema();
+    agent.agentName = body.name;
+    agent.maxContractAmount.value = body.maxContractAmount.value;
+    agent.maxContractAmount.unit = body.maxContractAmount.unit;
+    agent.maxFulfillmentTime.value = body.maxFulfillmentTime.value;
+    agent.maxFulfillmentTime.unit = body.maxFulfillmentTime.unit;
+    agent.minFulfillmentTime.value = body.minFulfillmentTime.value;
+    agent.minFulfillmentTime.unit = body.minFulfillmentTime.unit;
+    agent.maxVolume.value = body.maxVolume.value;
+    agent.maxVolume.unit = body.maxVolume.unit;
+    agent.maxNoOneToOne.value = body.maxNoOneToOne.value;
+    agent.maxNoOneToOne.unit = body.maxNoOneToOne.unit;
+    agent.productNames = body.productNames;
+    agent.maxNoContractPerDay = body.maxNoContractPerDay;
+    if (isNew) {
+        agent.id = randomstring.generate(12);
+        agent.companyID = body.companyID;
+        agent.noOfTransactions = 0;
+        agent.lastActive = "-";
+        agent.isActive = true;
+        agent.isDeleted = false;
+    } else if (isNew) {
+        agent.id = body.id;
+    }
+    return agent;
+};
+
+
+const generateSAForForm = (body, isNew) => {
+    let agent = new sellingAgentSchema();
+    agent.agentName = body.name;
+    agent.maxContractAmount.value = body.maxContractAmount.value;
+    agent.maxContractAmount.unit = body.maxContractAmount.unit;
+    agent.maxFulfillmentTime.value = body.maxFulfillmentTime.value;
+    agent.maxFulfillmentTime.unit = body.maxFulfillmentTime.unit;
+    agent.minFulfillmentTime.value = body.minFulfillmentTime.value;
+    agent.minFulfillmentTime.unit = body.minFulfillmentTime.unit;
+    agent.maxVolume.value = body.maxVolume.value;
+    agent.maxVolume.unit = body.maxVolume.unit;
+    agent.maxNoOneToOne.value = body.maxNoOneToOne.value;
+    agent.maxNoOneToOne.unit = body.maxNoOneToOne.unit;
+    agent.productNames = body.productNames;
+    agent.maxNoContractPerDay = body.maxNoContractPerDay;
+    if (isNew) {
+        agent.id = randomstring.generate(12);
+        agent.companyID = body.companyID;
+        agent.noOfTransactions = 0;
+        agent.lastActive = "-";
+        agent.isActive = true;
+        agent.isDeleted = false;
+    } else if (isNew) {
+        agent.id = body.id;
+    }
+    return agent;
+};
 
 let AgentService = {
 
@@ -68,27 +133,7 @@ let AgentService = {
         let sellingAgent = body;
         return new Promise((resolve, reject) => {
             agentValidations.validateCreateAgent(sellingAgent).then((validationResults) => {
-                let agent = new sellingAgentSchema();
-                agent.companyID = body.companyID;
-                agent.id = randomstring.generate(12);
-                agent.agentName = body.name;
-                agent.maxContractAmount.value = body.maxContractAmount.value;
-                agent.maxContractAmount.unit = body.maxContractAmount.unit;
-                agent.maxFulfillmentTime.value = body.maxFulfillmentTime.value;
-                agent.maxFulfillmentTime.unit = body.maxFulfillmentTime.unit;
-                agent.minFulfillmentTime.value = body.minFulfillmentTime.value;
-                agent.minFulfillmentTime.unit = body.minFulfillmentTime.unit;
-                agent.maxVolume.value = body.maxVolume.value;
-                agent.maxVolume.unit = body.maxVolume.unit;
-                agent.maxNoOneToOne.value = body.maxNoOneToOne.value;
-                agent.maxNoOneToOne.unit = body.maxNoOneToOne.unit;
-                agent.productNames = body.productNames;
-                agent.maxNoContractPerDay = body.maxNoContractPerDay;
-                agent.noOfTransactions = 0;
-                agent.lastActive = "-";
-                agent.isActive = true;
-                agent.isDeleted = false;
-
+                let agent = generateSAForForm(body, true);
                 agent.save(function (err, agentResults) {
                     if (err) {
                         loggerWinston.error('couldnt save selling agent', {error: err});
@@ -109,26 +154,7 @@ let AgentService = {
         let buyingAgent = body;
         return new Promise((resolve, reject) => {
             agentValidations.validateCreateAgent(buyingAgent).then((validationResults) => {
-                let agent = new buyingAgentSchema();
-                agent.companyID = body.companyID;
-                agent.agentName = body.name;
-                agent.maxContractAmount.value = body.maxContractAmount.value;
-                agent.maxContractAmount.unit = body.maxContractAmount.unit;
-                agent.maxFulfillmentTime.value = body.maxFulfillmentTime.value;
-                agent.maxFulfillmentTime.unit = body.maxFulfillmentTime.unit;
-                agent.minFulfillmentTime.value = body.minFulfillmentTime.value;
-                agent.minFulfillmentTime.unit = body.minFulfillmentTime.unit;
-                agent.maxVolume.value = body.maxVolume.value;
-                agent.maxVolume.unit = body.maxVolume.unit;
-                agent.maxNoOneToOne.value = body.maxNoOneToOne.value;
-                agent.maxNoOneToOne.unit = body.maxNoOneToOne.unit;
-                agent.productNames = body.productNames;
-                agent.maxNoContractPerDay = body.maxNoContractPerDay;
-                agent.noOfTransactions = 0;
-                agent.lastActive = "-";
-                agent.isActive = true;
-                agent.isDeleted = false;
-
+                let agent = generateBAForForm(body, true);
                 agent.save(function (err, agentResults) {
                     if (err) {
                         loggerWinston.error('couldnt save selling agent', {error: err});
@@ -145,58 +171,83 @@ let AgentService = {
         })
     },
 
-
-    editAgent: (config) => {
-
+    updateSellingAgent: (body) => {
+        return new Promise((resolve, reject) => {
+            let agent = generateSAForForm(body, false);
+            var upsertData = agent.toObject();
+            delete upsertData._id;
+            sellingAgentSchema.update({id: agent.id}, upsertData, {upsert: true}, function (err, agent) {
+                if (err) {
+                    reject(error);
+                }
+                console.log("agent update completed")
+                resolve(agent);
+            });
+            resolve();
+        });
     },
 
-    deleteAgent: () => {
+    updateBuyingAgent: (body) => {
+        return new Promise((resolve, reject) => {
+            let agent = generateBAForForm(body, false);
+            var upsertData = agent.toObject();
+            delete upsertData._id;
+            buyingAgentSchema.update({id: agent.id}, upsertData, {upsert: true}, function (err, agent) {
+                if (err) {
+                    reject(error);
+                }
+                console.log("agent update completed")
+                resolve(agent);
+            });
+            resolve();
+        });
+    },
 
+    deleteAgent: (id, agentType) => {
+        return new Promise((resolve, reject) => {
+            let query = {id: id};
+            let param = {
+                $set: {isDeleted: true}
+            };
+            DBService.upDateAgentAttribute(id, agentType, query, param).then((data) => {
+                resolve(data);
+            }).catch((err) => {
+                reject(err);
+            })
+        });
     },
 
     deactivateAgent: (id, agentType) => {
-        let agentSchema = buyingAgentSchema;
-        if (agentType === 'SELLING_AGENT') {
-            agentSchema = sellingAgentSchema;
-        }
         return new Promise((resolve, reject) => {
-            agentSchema.update({
-                id: id
-            }, {
-                $set: {
-                    "isActive": false
-                }
-            }, function (err, user) {
-                if (err) throw error;
-                console.log("update user complete")
+            let query = {id: id};
+            let param = {
+                $set: {isActive: false}
+            };
+            DBService.upDateAgentAttribute(id, agentType, query, param).then((data) => {
+                resolve(data);
+            }).catch((err) => {
+                reject(err);
             })
         });
     },
 
     activateAgent: (id, agentType) => {
-        let agentSchema = buyingAgentSchema;
-        if (agentType === 'SELLING_AGENT') {
-            agentSchema = sellingAgentSchema;
-        }
         return new Promise((resolve, reject) => {
-            agentSchema.update({
-                id: id
-            }, {
-                $set: {
-                    "isActive": true
-                }
-            }, function (err, user) {
-                if (err) {
-                    reject(error);
-                }
-                resolve();
+            let query = {id: id};
+            let param = {
+                $set: {isActive: true}
+            };
+            DBService.upDateAgentAttribute(id, agentType, query, param).then((data) => {
+                resolve(data);
+            }).catch((err) => {
+                reject(err);
             })
         });
     },
 
     getAllSellingAgents: (companyID) => {
         return new Promise((resolve, reject) => {
-            sellingAgentSchema.find({companyID: companyID}).exec(function (err, agents) {
+            sellingAgentSchema.find({companyID: companyID, isDeleted: false}).exec(function (err, agents) {
                 if (err) {
                     loggerWinston.error('couldnt get all selling agents', {error: err});
                     reject(new CustomError('couldnt get all selling agents', err))
@@ -207,9 +258,22 @@ let AgentService = {
         })
     },
 
+    getSellingAgent: (id) => {
+        return new Promise((resolve, reject) => {
+            sellingAgentSchema.find({id: id}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all selling agents', {error: err});
+                    reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        })
+    },
+
     getAllBuyingAgents: (companyID) => {
         return new Promise((resolve, reject) => {
-            buyingAgentSchema.find({companyID: companyID}).exec(function (err, agents) {
+            buyingAgentSchema.find({companyID: companyID, isDeleted: false}).exec(function (err, agents) {
                 if (err) {
                     loggerWinston.error('couldnt get all buying agents', {error: err});
                     reject(new CustomError('couldnt get all buying agents', err))
@@ -220,30 +284,96 @@ let AgentService = {
         })
     },
 
-    approveSelling: (companyID) => {
-        let productID;
-        let terms;
+    getAssociatedSellingAgent: (companyID, productID) => {
+        let sellingAgent;
+        return new Promise(async (resolve, reject) => {
 
-        return new Promise((resolve, reject) => {
             sellingAgentSchema.find({companyID: companyID}).exec(function (err, agents) {
                 if (err) {
-                    loggerWinston.error('couldn\'t get all selling agents', {error: err});
-                    reject(new CustomError('couldn\'t get all selling agents', err))
+                    loggerWinston.error('couldn\'t get the selling agents', {error: err});
+                    reject(new CustomError('couldn\'t get the selling agents', err))
                 } else {
-                    agents.forEach((agent) => {
-                        agent.productNames.forEach((id) => {
-                            if (productID == id) {
 
+                    for (let i = 0; i < agents.length; i++) {
+                        let agent = agents[i];
+                        for (let j = 0; j < agent.productNames.length; j++) {
+                            let pID = agent.productNames[j];
+                            if (pID === productID && agent.isActive === true) {
+                                sellingAgent = agent;
+                                break;
                             }
-                        });
-                    });
-                    let agent = agents
+                        }
+                        // Found the appropriate agent for selling
+                        if (sellingAgent !== undefined) {
+                            break;
+                        }
+                    }
                 }
             });
+
+            resolve(sellingAgent);
         });
     },
+
+
+    notifyAgent: ((buyData) => {
+        return new Promise((resolve, reject) => {
+            let partyID = buyData['sellerSupplierParty']['partyIdentification'][0]['id'];
+            let productID = orderLine[0]['lineItem']['manufacturersItemIdentification']['id'];
+            let epochTime = Math.round((new Date()).getTime() / 1000);
+
+            this.getAssociatedSellingAgent(partyID, productID).then((agentID) => {
+                if (agentID !== undefined) {
+                    // save the configurations to the data base
+                    let buyDataSchema = new buyerOrderSchema();
+                    buyDataSchema.id = buyData.id;
+                    buyDataSchema.payload = buyData;
+                    buyDataSchema.timeStamp = epochTime;
+
+                    // Compute the next execution time
+
+                    buyDataSchema.save(function (err, agentResults) {
+                        if (err) {
+                            loggerWinston.error('couldnt save the buying data configs', {error: err});
+                            reject({msg: 'couldnt save the buying data configs'});
+                        } else {
+                            resolve({msg: 'found an associated agent!'});
+                        }
+                    });
+                } else {
+                    resolve({msg: 'could not find an associated agent'})
+                }
+            }).catch((err) => {
+                reject(err);
+            })
+        });
+    }),
+
+
+    startSellAgentProcessing: (() => {
+        // Get all the requests for processing
+
+        // For each request check if the status of the product has changed
+
+        // For Each request check if it can be processed via time stamp
+
+        // check if the volume limit has exceeded from processed payments
+
+        // If all okay, start approving the Item
+        this.getSellingAgent().then((agent) => {
+
+        }).catch(err => {
+
+        })
+    })
 };
 
-AgentService.approveSelling("50916");
+// AgentService.approveSelling("50916");
+
+
+const checkIFAgentExitsForProduct = (async (partyID, productID) => {
+
+
+});
 
 module.exports = AgentService;
