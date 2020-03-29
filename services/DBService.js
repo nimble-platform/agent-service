@@ -28,7 +28,7 @@ let DBService = {
                 if (err) {
                     reject(error);
                 }
-                console.log("agent update completed")
+                console.log("agent update completed");
                 resolve(agent);
             });
         });

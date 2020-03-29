@@ -7,12 +7,6 @@ const SELLING_AGENT = "SELLING_AGENT";
 const BUYING_AGENT = "BUYING_AGENT";
 
 
-router.get('/hello', function (req, res, next) {
-    res.json({
-        "welcomeMSG": "hello"
-    })
-});
-
 router.post('/createSellingAgent', function (req, res, next) {
     agentService.createSellingAgent(req.body).then((results) => {
         res.status(201).json(results)
@@ -31,7 +25,7 @@ router.post('/createBuyingAgent', function (req, res, next) {
 
 router.post('/updateSellingAgent', function (req, res, next) {
     agentService.updateSellingAgent(req.body).then((results) => {
-        res.status(201).json(results)
+        res.status(201).json({msg: 'updated successfully'})
     }).catch((err) => {
         res.status(400).json({msg: 'error when creating the selling agent'})
     })
@@ -39,21 +33,16 @@ router.post('/updateSellingAgent', function (req, res, next) {
 
 router.post('/updateBuyingAgent', function (req, res, next) {
     agentService.updateBuyingAgent(req.body).then((results) => {
-        res.status(201).json(results)
+        res.status(201).json({msg: 'updated successfully'})
     }).catch((err) => {
         res.status(400).json({msg: 'error when creating the selling agent'})
     })
 });
 
-router.post('/deleteSellingAgent', function (req, res, next) {
-    res.json({
-        "welcomeMSG": "hello"
-    })
-});
 
 router.post('/deleteSellingAgent', function (req, res, next) {
     agentService.deleteAgent(req.id, SELLING_AGENT).then((results)=>{
-        res.status(201).json(results)
+        res.status(201).json({msg: 'deleted the agent'})
     }).catch((err) =>{
         res.status(400).json({msg: 'error when creating the selling agent'})
     })
@@ -61,7 +50,7 @@ router.post('/deleteSellingAgent', function (req, res, next) {
 
 router.post('/deleteBuyingAgent', function (req, res, next) {
     agentService.deleteAgent(req.id, BUYING_AGENT).then((results)=>{
-        res.status(201).json(results)
+        res.status(201).json({msg: 'deleted the agent'})
     }).catch((err) =>{
         res.status(400).json({msg: 'error when creating the selling agent'})
     })
@@ -70,7 +59,7 @@ router.post('/deleteBuyingAgent', function (req, res, next) {
 
 router.post('/activateSellingAgent', function (req, res, next) {
     agentService.activateAgent(req.body.agentID, SELLING_AGENT).then(() => {
-        res.status(200);
+        res.status(200).json({msg: 'activated the agent'})
     }).catch((err) => {
         res.status(400).json({msg: 'failed to activate the agent'})
     })
@@ -78,7 +67,7 @@ router.post('/activateSellingAgent', function (req, res, next) {
 
 router.post('/deactivateSellingAgent', function (req, res, next) {
     agentService.deactivateAgent(req.body.agentID, SELLING_AGENT).then(() => {
-        res.status(200);
+        res.status(200).json({msg: 'deactivated all the agent'})
     }).catch((err) => {
         res.status(400).json({msg: 'failed to deactivate the agent'})
     })
@@ -86,7 +75,7 @@ router.post('/deactivateSellingAgent', function (req, res, next) {
 
 router.post('/activateBuyingAgent', function (req, res, next) {
     agentService.activateAgent(req.body.agentID, BUYING_AGENT).then(() => {
-        res.status(200);
+        res.status(200).json({msg: 'activated the agent'})
     }).catch((err) => {
         res.status(400).json({msg: 'failed to activate the agent'})
     })
@@ -94,7 +83,7 @@ router.post('/activateBuyingAgent', function (req, res, next) {
 
 router.post('/deactivateBuyingAgent', function (req, res, next) {
     agentService.deactivateAgent(req.body.agentID, BUYING_AGENT).then(() => {
-        res.status(200);
+        res.status(200).json({msg: 'deactivated the agent'})
     }).catch((err) => {
         res.status(400).json({msg: 'failed to deactivate the agent'})
     })
@@ -102,18 +91,18 @@ router.post('/deactivateBuyingAgent', function (req, res, next) {
 
 router.post('/deactivateAllAgents', function (req, res, next) {
     agentService.deactivateAgent(req.body.agentID, BUYING_AGENT).then(() => {
-        res.status(200);
+        res.status(200).json({msg: 'deactivated all agents'})
     }).catch((err) => {
-        res.status(400).json({msg: 'failed to deactivate the agent'})
+        res.status(400).json({msg: 'failed to deactivate the agents'})
     })
 });
 
 
 router.post('/deleteAgent', function (req, res, next) {
     agentService.deleteAgent(req.body.id, req.body.agentType).then(() => {
-        res.status(200);
+        res.status(200).json({msg: 'deleted the agent'});
     }).catch((err) => {
-        res.status(400).json({msg: 'failed to deactivate the agent'})
+        res.status(400).json({msg: 'failed to delete the agent'})
     })
 });
 
@@ -135,7 +124,7 @@ router.get('/getAllBuyingAgents/:companyId', function (req, res, next) {
 
 router.post('/notifyAgent', function (req, res, next) {
     agentService.notifyAgent(req.body).then(() => {
-        res.status(200);
+        res.status(200).send({msg: 'successfully notified the agent'})
     }).catch((err) => {
         res.status(400).json({msg: 'failed to notify the agent'})
     })
