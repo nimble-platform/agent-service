@@ -1,14 +1,12 @@
 const agentValidations = require('../core/validations/sellingAgentValidations');
-const CustomError = require('../core/exceptions/error')
+const CustomError = require('../core/exceptions/error');
 const loggerWinston = require('../configs/logger');
 const configs = require('../configs/config');
-const sellingAgentSchema = require('../core/models/SellingAgentSchema')
-const buyingAgentSchema = require('../core/models/BuyingAgentSchema')
-const randomstring = require("randomstring");
-const request = require('request');
-const DBService = require('./DBService')
+const sellingAgentSchema = require('../core/models/SellingAgentSchema');
+const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
+const randomstring = require("randomstring");
 
 
 function generateUUID(){
@@ -22,38 +20,6 @@ function generateUUID(){
 }
 
 let AgentHelper = {
-    upDateAgentAttribute: (id, agentType, attributeName, AttributeValue) => {
-
-        return new Promise((resolve, reject) => {
-
-            let agentSchema = null;
-            if (agentType === 'SELLING_AGENT') {
-                agentSchema = sellingAgentSchema;
-            }else if (agentSchema === 'BUYING_AGENT') {
-                agentSchema = buyingAgentSchema;
-            }
-
-            if (agentSchema == null) {
-                reject({msg: "Invalid agent type"})
-            }
-
-            agentSchema.update({
-                id: id
-            }, {
-                $set: {
-                    attributeName: AttributeValue
-                }
-            }, function (err, agent) {
-                if (err) {
-                    reject(error);
-                }
-                console.log("agent update completed")
-                resolve(agent);
-            });
-        });
-    },
-
-
     getAssociatedSellingAgent: (companyID, productID) => {
         let sellingAgent;
         return new Promise(async (resolve, reject) => {
@@ -85,7 +51,6 @@ let AgentHelper = {
         });
     },
 
-
     computeExecutionTime: ((epochTime, value, unit) => {
         let time = epochTime;
         if (unit === 'hour') {
@@ -102,7 +67,6 @@ let AgentHelper = {
         return Math.round((new Date()).getTime() / 1000);
     }),
 
-
     getSellingAgent: (id) => {
         return new Promise((resolve, reject) => {
             sellingAgentSchema.find({id: id}).exec(function (err, agent) {
@@ -115,7 +79,6 @@ let AgentHelper = {
             });
         })
     },
-
 
     createSellApprovalRequest: ((data) => {
         return req = {
@@ -135,7 +98,6 @@ let AgentHelper = {
             additionalDocumentReference: []
         };
     }),
-
 
     deleteOrderRequest: ((id)=>{
         return new Promise((resolve, reject) => {
@@ -224,6 +186,11 @@ let AgentHelper = {
         }
         return agent;
     },
+
+    checkIfUnderTheTransactionLimit: ((order) => {
+
+
+    })
 };
 
 

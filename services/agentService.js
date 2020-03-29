@@ -216,19 +216,18 @@ let AgentService = {
                             console.log('Error :', err);
                             return
                         }
-                        let response = JSON.parse(body)
-
+                        let response = JSON.parse(body);
                         if (response.processInstanceState === 'ACTIVE') {
                             options.url = `${configs.baseUrl}/business-process/process-document`;
                             options.body = JSON.stringify(agentHelper.createSellApprovalRequest(order));
 
-                            request.post(options, function (err1, res1, body1) {
+                            request.post(options, function (processDocErr, processDocRes, processDocBody) {
                                 if (err) {
-                                    console.log('Error occurred while processing the request :', err1);
+                                    console.log('Error occurred while processing the request :', processDocErr);
                                     return
                                 }
-                                let response1 = JSON.parse(body1);
-                                if (response1.status === 'COMPLETED') {
+                                let processDocResponse = JSON.parse(processDocBody);
+                                if (processDocResponse.status === 'COMPLETED') {
                                     console.log(`The order has been successfully processed : ${order.id}`);
                                     agentHelper.deleteOrderRequest(order.id);
                                     agentHelper.addToSAProcessedOrder(order);
