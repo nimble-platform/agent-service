@@ -6,20 +6,20 @@ var SellingAgentSchema = new Schema({
     companyID: String,
     agentName: String,
     maxContractAmount: {
-        value: String,
+        value: Number,
         unit: String
     },
     maxFulfillmentTime: {
-        value: String,
+        value: Number,
         unit: String
     },
     minFulfillmentTime: {
-        value: String,
+        value: Number,
         unit: String
     },
     maxNoContractPerDay: String,
     maxVolume: {
-        value: String,
+        value: Number,
         unit: String
     },
     maxNoOneToOne: {

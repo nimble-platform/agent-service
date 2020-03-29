@@ -1,14 +1,13 @@
 var path = require('path');
-var http = require('http');
-var url = require('url');
-var baseUrl = "http://localhost:8082";
+var baseUrl = "http://nimble-staging.salzburgresearch.at";
 
 module.exports = {
-    'secret': '', //session encrypt key
+    'secret': 'ASD#DDdjjdjdfdss', //session encrypt key
     'publicFolderPath':path.dirname(require.main.filename) + '/public',
-    'baseUrl':baseUrl + "/",
-    'orgin':baseUrl,
+    'baseUrl':baseUrl,
     'port':8383,
     'mongoDb':"",
     "inProduction":false,
+    "token": "",
+    "bearer": ""
 };
