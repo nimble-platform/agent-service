@@ -7,6 +7,7 @@ const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
 const randomstring = require("randomstring");
+const utils = require("./util");
 
 
 function generateUUID(){
@@ -18,6 +19,34 @@ function generateUUID(){
     });
     return uuid;
 }
+
+const getSellingAgent = ((id) => {
+    return new Promise((resolve, reject) => {
+        sellingAgentSchema.find({id: id}).exec(function (err, agent) {
+            if (err) {
+                loggerWinston.error('couldnt get all selling agents', {error: err});
+                reject(new CustomError('couldnt get all selling agents', err))
+            } else {
+                resolve(agent)
+            }
+        });
+    })
+});
+
+
+const getOrders = ((id, lt, gt) => {
+    return new Promise((resolve, reject) => {
+        saOrderApproved.find({id: id,
+            timeStamp: {$lt: lt, $gt: gt}}).exec(function (err, agent) {
+            if (err) {
+                loggerWinston.error('couldnt get all selling agents', {error: err});
+                reject(new CustomError('couldnt get all selling agents', err))
+            } else {
+                resolve(agent)
+            }
+        });
+    })
+});
 
 let AgentHelper = {
     getAssociatedSellingAgent: (companyID, productID) => {
@@ -116,6 +145,37 @@ let AgentHelper = {
             let dataScheme = new saOrderApproved();
             dataScheme.id = orderData.id;
             dataScheme.payload = orderData;
+            dataScheme.timeStamp = utils.getCurrentEpochTime();
+            dataScheme.agentID = orderData.agentID;
+
+
+            dataScheme.save(function (err, agentResults) {
+                if (err) {
+                    loggerWinston.error('error when persisting the new order', {error: err});
+                    reject({msg: 'error when persisting the new order'});
+                } else {
+                    resolve({msg: 'persisted the new order'});
+                }
+            });
+        });
+    }),
+
+
+    getSAProcessedOrder: ((agentID) => {
+        return new Promise((resolve, reject) => {
+
+            saOrderApproved.find({agentID: agentID}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all selling agents', {error: err});
+                    reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+
+            let dataScheme = new saOrderApproved();
+            dataScheme.id = orderData.id;
+            dataScheme.payload = orderData;
             dataScheme.timeStamp = orderData.timeStamp;
             dataScheme.agentID = orderData.agentID;
 
@@ -189,6 +249,41 @@ let AgentHelper = {
 
     checkIfUnderTheTransactionLimit: ((order) => {
 
+        return new Promise((resolve, reject) => {
+            getSellingAgent(order.agentID).then((agents) => {
+                if (agents === undefined || agents.length === 0) {
+                    return false;
+                }
+
+                let agent = agents[0].toJSON();
+
+                if (agent.maxContractAmount < order.payload.anticipatedMonetaryTotal.payableAmount.value) {
+                    reject();
+                }
+
+                // check if daily contract limit has exceeded
+                getOrders(order.agentID, utils.getToNightTimeStamp, utils.getTodayMorningTimeStamp).then((saOrders) => {
+                    let orderPerDay = saOrders.length;
+                    if (!(orderPerDay < Number(agent.maxNoContractPerDay))) {
+                        reject();
+                    }
+                }).then(() =>{
+                    // check if total volume has exceeded
+                    getOrders(order.agentID, utils.getToNightTimeStamp, utils.getTodayMorningTimeStamp).then((saOrders) => {
+
+                    })
+                }).then(() => {
+
+                })
+            });
+        });
+
+
+
+
+
+
+        // check if daily
 
     })
 };

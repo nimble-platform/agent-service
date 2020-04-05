@@ -10,10 +10,6 @@ const agentHelper = require('./agentHelper');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 
 
-// TODO Experimental for DEV
-const buyData = require('../core/data/firstOrder')
-
-
 let AgentService = {
 
     createSellingAgent: (body) => {
@@ -201,43 +197,53 @@ let AgentService = {
                 reject(new CustomError('couldnt get all selling agents', err))
             } else {
                 orders.forEach((order) => {
-                    // let url = `${configs.baseUrl}/business-process/document/json/${documentID}`;
-                    order = order.toJSON();
-                    let processID = order['payload']['processData']['processInstanceID'];
-                    var options = {
-                        url: `${configs.baseUrl}/business-process/processInstance/${processID}/details?delegateId=STAGING`,
-                        headers: {
-                            Authorization: configs.bearer
-                        }
-                    };
 
-                    request(options, function (err, res, body) {
-                        if (err) {
-                            console.log('Error :', err);
-                            return
-                        }
-                        let response = JSON.parse(body);
-                        if (response.processInstanceState === 'ACTIVE') {
-                            options.url = `${configs.baseUrl}/business-process/process-document`;
-                            options.body = JSON.stringify(agentHelper.createSellApprovalRequest(order));
+                    agentHelper.getSellingAgent(order.agentID).then((agents) => {
+                        let agent = agents[0].toJSON()
+                        // Check if the agent is active
+                        if (agent.isActive) {
+                            // let url = `${configs.baseUrl}/business-process/document/json/${documentID}`;
+                            order = order.toJSON();
+                            let processID = order['payload']['processData']['processInstanceID'];
+                            let options = {
+                                url: `${configs.baseUrl}/business-process/processInstance/${processID}/details?delegateId=STAGING`,
+                                headers: {
+                                    Authorization: configs.bearer
+                                }
+                            };
 
-                            request.post(options, function (processDocErr, processDocRes, processDocBody) {
+                            request(options, function (err, res, body) {
                                 if (err) {
-                                    console.log('Error occurred while processing the request :', processDocErr);
+                                    console.log('Error :', err);
                                     return
                                 }
-                                let processDocResponse = JSON.parse(processDocBody);
-                                if (processDocResponse.status === 'COMPLETED') {
-                                    console.log(`The order has been successfully processed : ${order.id}`);
+                                let response = JSON.parse(body);
+                                if (response.processInstanceState === 'ACTIVE') {
+                                    options.url = `${configs.baseUrl}/business-process/process-document`;
+                                    options.body = JSON.stringify(agentHelper.createSellApprovalRequest(order));
+
+                                    let isUnderLimit = agentHelper.checkIfUnderTheTransactionLimit(order);
+
+                                    request.post(options, function (processDocErr, processDocRes, processDocBody) {
+                                        if (err) {
+                                            console.log('Error occurred while processing the request :', processDocErr);
+                                            return
+                                        }
+                                        let processDocResponse = JSON.parse(processDocBody);
+                                        if (processDocResponse.status === 'COMPLETED') {
+                                            console.log(`The order has been successfully processed : ${order.id}`);
+                                            agentHelper.deleteOrderRequest(order.id);
+                                            agentHelper.addToSAProcessedOrder(order);
+                                            // update number of transactions
+                                        }
+                                    })
+                                } else {
+                                    // delete from the order processing list
                                     agentHelper.deleteOrderRequest(order.id);
-                                    agentHelper.addToSAProcessedOrder(order);
                                 }
                             })
-                        }else {
-                            // delete from the order processing list
-                            agentHelper.deleteOrderRequest(order.id);
                         }
-                    })
+                    });
                 });
             }
         });
