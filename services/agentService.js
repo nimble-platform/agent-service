@@ -154,7 +154,7 @@ let AgentService = {
 
     getSAOrders: ((agentID) => {
         return new Promise((resolve, reject) => {
-            saOrderApproved.find({agentID: id}).exec(function (err, agent) {
+            saOrderApproved.find({agentID: agentID}).exec(function (err, agent) {
                 if (err) {
                     loggerWinston.error('couldnt get all selling agents', {error: err});
                     reject(new CustomError('couldnt get all selling agents', err))
