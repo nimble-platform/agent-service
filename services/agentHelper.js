@@ -34,10 +34,9 @@ const getSellingAgent = ((id) => {
 });
 
 
-const getOrders = ((id, lt, gt) => {
+    const getOrders = ((id, lt, gt) => {
     return new Promise((resolve, reject) => {
-        saOrderApproved.find({id: id,
-            timeStamp: {$lt: lt, $gt: gt}}).exec(function (err, agent) {
+        saOrderApproved.find({agentID: id, timeStamp: {$lt: lt, $gt: gt}}).exec(function (err, agent) {
             if (err) {
                 loggerWinston.error('couldnt get all selling agents', {error: err});
                 reject(new CustomError('couldnt get all selling agents', err))
@@ -130,11 +129,11 @@ let AgentHelper = {
 
     deleteOrderRequest: ((id)=>{
         return new Promise((resolve, reject) => {
-            buyerOrderSchema.remove({ id: id }, function(err) {
-                if (!err) {
-                    reject({msg: `error when deleting the record: ${order.id}`})
+            buyerOrderSchema.deleteOne({ id: id }, function(err) {
+                if (err) {
+                    reject({msg: `error when deleting the record: ${id}`})
                 }else {
-                    resolve({msg: `Successfully deleted the record: ${order.id}`})
+                    resolve({msg: `Successfully deleted the record: ${id}`})
                 }
             });
         });
@@ -247,44 +246,52 @@ let AgentHelper = {
         return agent;
     },
 
-    checkIfUnderTheTransactionLimit: ((order) => {
-
+    checkIfUnderTheTransactionLimit: ((order, agent) => {
         return new Promise((resolve, reject) => {
-            getSellingAgent(order.agentID).then((agents) => {
-                if (agents === undefined || agents.length === 0) {
-                    return false;
+
+            // check if max time has exceeded
+            let currentTime = utils.getCurrentEpochTime();
+
+            if (order.nextMaxTime < currentTime) {
+                reject({code: 1000, msg: `max timer has been breached for order id ${order.id}`});
+                return
+            }
+
+            if (agent.maxContractAmount.value < Number(order.payload.anticipatedMonetaryTotal.payableAmount.value)) {
+                reject({code: 1003, msg: `maxContractAmount has been breached for order id ${order.id}`});
+                return;
+            }
+
+            // check if daily contract limit has exceeded
+            getOrders(order.agentID, utils.getToNightTimeStamp(), utils.getTodayMorningTimeStamp()).then((saOrders) => {
+                let orderPerDay = saOrders.length;
+                if (!(orderPerDay < Number(agent.maxNoContractPerDay))) {
+                    reject({code: 1001, msg: `maxNoContractPerDay has been breached for order id ${order.id}`});
+                    return;
                 }
+            }).then(() => {
+                // check if total volume has exceeded
+                let beforeTime = utils.computePreviousTime(currentTime, 1, agent.maxVolume.unit);
+                getOrders(order.agentID, currentTime, beforeTime).then((saOrders) => {
+                    let qty = 0;
+                    saOrders.forEach((saOrder) => {
+                        saOrder = saOrder.toJSON();
+                        qty += Number(saOrder.payload.payload.orderLine[0].lineItem.quantity.value);
+                    });
 
-                let agent = agents[0].toJSON();
+                    qty += Number(order.payload.orderLine[0].lineItem.quantity.value)
 
-                if (agent.maxContractAmount < order.payload.anticipatedMonetaryTotal.payableAmount.value) {
-                    reject();
-                }
-
-                // check if daily contract limit has exceeded
-                getOrders(order.agentID, utils.getToNightTimeStamp, utils.getTodayMorningTimeStamp).then((saOrders) => {
-                    let orderPerDay = saOrders.length;
-                    if (!(orderPerDay < Number(agent.maxNoContractPerDay))) {
-                        reject();
+                    if (agent.maxVolume.value < qty) {
+                        reject({code: 1003, msg: `maxVolume has been breached for order id ${order.id}`});
+                        return;
                     }
-                }).then(() =>{
-                    // check if total volume has exceeded
-                    getOrders(order.agentID, utils.getToNightTimeStamp, utils.getTodayMorningTimeStamp).then((saOrders) => {
 
-                    })
-                }).then(() => {
-
+                    resolve();
                 })
+            }).catch((err) => {
+                console.log(`err: ${err}`)
             });
         });
-
-
-
-
-
-
-        // check if daily
-
     })
 };
 

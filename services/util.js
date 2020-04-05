@@ -31,7 +31,7 @@ let util = {
 
     getToNightTimeStamp: (() => {
         var d = new Date();
-        return d.setHours(0, 0, 0, 0) / 1000;
+        return d.setHours(23, 59, 59) / 1000;
     }),
 
     getCurrentEpochTime: (() => {

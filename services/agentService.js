@@ -154,37 +154,44 @@ let AgentService = {
 
     notifyAgent: ((buyData) => {
         return new Promise((resolve, reject) => {
-            let partyID = buyData['sellerSupplierParty']['party']['partyIdentification'][0]['id'];
-            let productID = buyData['orderLine'][0]['lineItem']['item']['manufacturersItemIdentification']['id'];
-            let epochTime = agentHelper.getCurrentEpochTime();
+            if(buyData['processData']['processID'] === "Order"){
+                let partyID = buyData['sellerSupplierParty']['party']['partyIdentification'][0]['id'];
+                let productID = buyData['orderLine'][0]['lineItem']['item']['manufacturersItemIdentification']['id'];
+                let epochTime = agentHelper.getCurrentEpochTime();
 
-            agentHelper.getAssociatedSellingAgent(partyID, productID).then((sellingAgent) => {
-                if (sellingAgent !== undefined) {
-                    // save the configurations to the data base
-                    let buyDataSchema = new buyerOrderSchema();
-                    buyDataSchema.id = buyData.id;
-                    buyDataSchema.payload = buyData;
-                    buyDataSchema.timeStamp = epochTime;
-                    buyDataSchema.agentID = sellingAgent.id;
+                agentHelper.getAssociatedSellingAgent(partyID, productID).then((sellingAgent) => {
+                    if (sellingAgent !== undefined) {
+                        // save the configurations to the data base
+                        let buyDataSchema = new buyerOrderSchema();
+                        buyDataSchema.id = buyData.id;
+                        buyDataSchema.payload = buyData;
+                        buyDataSchema.timeStamp = epochTime;
+                        buyDataSchema.agentID = sellingAgent.id;
 
-                    // Compute the next execution time
-                    buyDataSchema.nextTime = agentHelper.computeExecutionTime(epochTime, sellingAgent['minFulfillmentTime']['value'],
-                        sellingAgent['minFulfillmentTime']['unit']);
+                        // Compute the next execution time
+                        buyDataSchema.nextTime = agentHelper.computeExecutionTime(epochTime, sellingAgent['minFulfillmentTime']['value'],
+                            sellingAgent['minFulfillmentTime']['unit']);
 
-                    buyDataSchema.save(function (err, agentResults) {
-                        if (err) {
-                            loggerWinston.error('couldnt save the buying data configs', {error: err});
-                            reject({msg: 'couldnt save the buying data configs'});
-                        } else {
-                            resolve({msg: 'found an associated agent!'});
-                        }
-                    });
-                } else {
-                    resolve({msg: 'could not find an associated agent'})
-                }
-            }).catch((err) => {
-                reject(err);
-            })
+                        buyDataSchema.nextMaxTime = agentHelper.computeExecutionTime(epochTime, sellingAgent['maxFulfillmentTime']['value'],
+                            sellingAgent['maxFulfillmentTime']['unit']);
+
+                        buyDataSchema.save(function (err, agentResults) {
+                            if (err) {
+                                loggerWinston.error('couldnt save the buying data configs', {error: err});
+                                reject({msg: 'couldnt save the buying data configs'});
+                            } else {
+                                resolve({msg: 'found an associated agent!'});
+                            }
+                        });
+                    } else {
+                        resolve({msg: 'could not find an associated agent'})
+                    }
+                }).catch((err) => {
+                    reject(err);
+                })
+            }else {
+                resolve({msg: 'Negotiations are not supported by the agents'});
+            }
         });
     }),
 
@@ -199,49 +206,55 @@ let AgentService = {
                 orders.forEach((order) => {
 
                     agentHelper.getSellingAgent(order.agentID).then((agents) => {
-                        let agent = agents[0].toJSON()
-                        // Check if the agent is active
-                        if (agent.isActive) {
-                            // let url = `${configs.baseUrl}/business-process/document/json/${documentID}`;
-                            order = order.toJSON();
-                            let processID = order['payload']['processData']['processInstanceID'];
-                            let options = {
-                                url: `${configs.baseUrl}/business-process/processInstance/${processID}/details?delegateId=STAGING`,
-                                headers: {
-                                    Authorization: configs.bearer
-                                }
-                            };
+                        if (agents.length !== 0) {
+                            let agent = agents[0].toJSON();
+                            // Check if the agent is active
+                            if (agent.isActive) {
+                                // let url = `${configs.baseUrl}/business-process/document/json/${documentID}`;
+                                order = order.toJSON();
+                                let processID = order['payload']['processData']['processInstanceID'];
+                                let options = {
+                                    url: `${configs.baseUrl}/business-process/processInstance/${processID}/details?delegateId=STAGING`,
+                                    headers: {
+                                        Authorization: configs.bearer
+                                    }
+                                };
 
-                            request(options, function (err, res, body) {
-                                if (err) {
-                                    console.log('Error :', err);
-                                    return
-                                }
-                                let response = JSON.parse(body);
-                                if (response.processInstanceState === 'ACTIVE') {
-                                    options.url = `${configs.baseUrl}/business-process/process-document`;
-                                    options.body = JSON.stringify(agentHelper.createSellApprovalRequest(order));
+                                request(options, function (err, res, body) {
+                                    if (err) {
+                                        console.log('Error :', err);
+                                        return
+                                    }
+                                    let response = JSON.parse(body);
+                                    if (response.processInstanceState === 'ACTIVE') {
+                                        options.url = `${configs.baseUrl}/business-process/process-document`;
+                                        options.body = JSON.stringify(agentHelper.createSellApprovalRequest(order));
 
-                                    let isUnderLimit = agentHelper.checkIfUnderTheTransactionLimit(order);
-
-                                    request.post(options, function (processDocErr, processDocRes, processDocBody) {
-                                        if (err) {
-                                            console.log('Error occurred while processing the request :', processDocErr);
-                                            return
-                                        }
-                                        let processDocResponse = JSON.parse(processDocBody);
-                                        if (processDocResponse.status === 'COMPLETED') {
-                                            console.log(`The order has been successfully processed : ${order.id}`);
-                                            agentHelper.deleteOrderRequest(order.id);
-                                            agentHelper.addToSAProcessedOrder(order);
-                                            // update number of transactions
-                                        }
-                                    })
-                                } else {
-                                    // delete from the order processing list
-                                    agentHelper.deleteOrderRequest(order.id);
-                                }
-                            })
+                                        let isUnderLimit = agentHelper.checkIfUnderTheTransactionLimit(order, agent).then(() => {
+                                            request.post(options, function (processDocErr, processDocRes, processDocBody) {
+                                                if (err) {
+                                                    console.log('Error occurred while processing the request :', processDocErr);
+                                                    return
+                                                }
+                                                let processDocResponse = JSON.parse(processDocBody);
+                                                if (processDocResponse.status === 'COMPLETED') {
+                                                    console.log(`The order has been successfully processed : ${order.id}`);
+                                                    agentHelper.deleteOrderRequest(order.id);
+                                                    agentHelper.addToSAProcessedOrder(order);
+                                                    // update number of transactions
+                                                }
+                                            })
+                                        }).catch((err) => {
+                                            if (err.code === 1000) {
+                                                agentHelper.deleteOrderRequest(order.id);
+                                            }
+                                        })
+                                    } else {
+                                        // delete from the order processing list
+                                        agentHelper.deleteOrderRequest(order.id);
+                                    }
+                                })
+                            }
                         }
                     });
                 });
@@ -250,7 +263,7 @@ let AgentService = {
     }),
 };
 
-// AgentService.startSellAgentProcessing(buyData);
-
+AgentService.startSellAgentProcessing();
+// agentHelper.deleteOrderRequest("4b050bc9-f56e-4faf-b18d-cb96e4f9ca3d");
 
 module.exports = AgentService;

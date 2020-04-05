@@ -6,7 +6,8 @@ var BuyingAgentSchema = new Schema({
     agentID: String,
     payload: Object,
     timeStamp: Number,
-    nextTime: Number
+    nextTime: Number,
+    nextMaxTime: Number
 });
 
 module.exports = mongoose.model('buy-data-scheme', BuyingAgentSchema);
