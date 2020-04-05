@@ -1,9 +1,10 @@
 const agentValidations = require('../core/validations/sellingAgentValidations');
-const CustomError = require('../core/exceptions/error')
+const CustomError = require('../core/exceptions/error');
 const loggerWinston = require('../configs/logger');
 const configs = require('../configs/config');
-const sellingAgentSchema = require('../core/models/SellingAgentSchema')
-const buyingAgentSchema = require('../core/models/BuyingAgentSchema')
+const sellingAgentSchema = require('../core/models/SellingAgentSchema');
+const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
+const saOrderApproved = require('../core/models/OrdersApprovedSA');
 const request = require('request');
 const DBService = require('./DBService');
 const agentHelper = require('./agentHelper');
@@ -150,6 +151,19 @@ let AgentService = {
             });
         })
     },
+
+    getSAOrders: ((agentID) => {
+        return new Promise((resolve, reject) => {
+            saOrderApproved.find({agentID: id}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all selling agents', {error: err});
+                    reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        })
+    }),
 
 
     notifyAgent: ((buyData) => {

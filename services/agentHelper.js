@@ -1,5 +1,3 @@
-const agentValidations = require('../core/validations/sellingAgentValidations');
-const CustomError = require('../core/exceptions/error');
 const loggerWinston = require('../configs/logger');
 const configs = require('../configs/config');
 const sellingAgentSchema = require('../core/models/SellingAgentSchema');
@@ -34,7 +32,7 @@ const getSellingAgent = ((id) => {
 });
 
 
-    const getOrders = ((id, lt, gt) => {
+const getOrders = ((id, lt, gt) => {
     return new Promise((resolve, reject) => {
         saOrderApproved.find({agentID: id, timeStamp: {$lt: lt, $gt: gt}}).exec(function (err, agent) {
             if (err) {
@@ -48,6 +46,20 @@ const getSellingAgent = ((id) => {
 });
 
 let AgentHelper = {
+
+    getSAOrders: ((agentID) => {
+        return new Promise((resolve, reject) => {
+            saOrderApproved.find({agentID: id}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all selling agents', {error: err});
+                    reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        })
+    }),
+
     getAssociatedSellingAgent: (companyID, productID) => {
         let sellingAgent;
         return new Promise(async (resolve, reject) => {
@@ -143,7 +155,7 @@ let AgentHelper = {
         return new Promise((resolve, reject) => {
             let dataScheme = new saOrderApproved();
             dataScheme.id = orderData.id;
-            dataScheme.payload = orderData;
+            dataScheme.payload = orderData.payload;
             dataScheme.timeStamp = utils.getCurrentEpochTime();
             dataScheme.agentID = orderData.agentID;
 
@@ -276,7 +288,7 @@ let AgentHelper = {
                     let qty = 0;
                     saOrders.forEach((saOrder) => {
                         saOrder = saOrder.toJSON();
-                        qty += Number(saOrder.payload.payload.orderLine[0].lineItem.quantity.value);
+                        qty += Number(saOrder.payload.orderLine[0].lineItem.quantity.value);
                     });
 
                     qty += Number(order.payload.orderLine[0].lineItem.quantity.value)
