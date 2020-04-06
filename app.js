@@ -19,7 +19,7 @@ var jwt = require('express-jwt');
 const config = require('./configs/config');
 
 mongoose.connect(config.mongoDb,{ useNewUrlParser: true,useUnifiedTopology: true });
-var publicKey = fs.readFileSync('./configs/public.pub');
+var publicKey = process.env.KEYCLOAK_PUBLIC_KEY;
 
 //routes
 const apiRoutes = require('./routes/api/v1/agentsRouter');
@@ -100,7 +100,7 @@ app.use(requestIp.mw());
 // app.use(jwt({ secret: publicKey}).unless({path: ['/api/v1/testpath',
 //     ]}));
 
-app.use('/api/v1/agents', apiRoutes);
+app.use('/agents', apiRoutes);
 
 
 // catch 404 and forward to error handler
@@ -147,4 +147,5 @@ app.use(function(err, req, res, next) {
 app.listen(config.port, () => {
     console.log('live on port ' + config.port);
 });
+
 module.exports = app;

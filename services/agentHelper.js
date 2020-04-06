@@ -172,6 +172,20 @@ let AgentHelper = {
     }),
 
 
+    incrementSAOrderCount: ((id) => {
+        return new Promise((resolve, reject) => {
+            sellingAgentSchema.findOneAndUpdate({id: id}, { $inc: { noOfTransactions: 1 }}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all selling agents', {error: err});
+                    reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        });
+    }),
+
+
     getSAProcessedOrder: ((agentID) => {
         return new Promise((resolve, reject) => {
 
@@ -231,7 +245,7 @@ let AgentHelper = {
     },
 
     generateBAForForm: (body, isNew) => {
-        let agent = new sellingAgentSchema();
+        let agent = new buyingAgentSchema();
         agent.agentName = body.name;
         agent.maxContractAmount.value = body.maxContractAmount.value;
         agent.maxContractAmount.unit = body.maxContractAmount.unit;

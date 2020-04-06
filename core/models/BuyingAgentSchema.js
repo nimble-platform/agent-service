@@ -1,29 +1,28 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
-var enums = require('../enums/enums')
 
 var BuyingAgentSchema = new Schema({
     companyID: String,
     agentName: String,
     maxContractAmount: {
-        value: String,
+        value: Number,
         unit: String
     },
     maxFulfillmentTime: {
-        value: String,
+        value: Number,
         unit: String
     },
     minFulfillmentTime: {
-        value: String,
+        value: Number,
         unit: String
     },
     maxNoContractPerDay: String,
     maxVolume: {
-        value: String,
+        value: Number,
         unit: String
     },
     maxNoOneToOne: {
-        value: String,
+        value: Number,
         unit: String
     },
     productNames: [String],

@@ -9,7 +9,7 @@ const request = require('request');
 const DBService = require('./DBService');
 const agentHelper = require('./agentHelper');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
-
+const cron = require("node-cron");
 
 let AgentService = {
 
@@ -255,6 +255,7 @@ let AgentService = {
                                                     console.log(`The order has been successfully processed : ${order.id}`);
                                                     agentHelper.deleteOrderRequest(order.id);
                                                     agentHelper.addToSAProcessedOrder(order);
+                                                    agentHelper.incrementSAOrderCount(agent.id);
                                                     // update number of transactions
                                                 }
                                             })
@@ -277,7 +278,11 @@ let AgentService = {
     }),
 };
 
-AgentService.startSellAgentProcessing();
+
+cron.schedule("*/30 * * * *", function() {
+    AgentService.startSellAgentProcessing();
+});
+
 // agentHelper.deleteOrderRequest("4b050bc9-f56e-4faf-b18d-cb96e4f9ca3d");
 
 module.exports = AgentService;

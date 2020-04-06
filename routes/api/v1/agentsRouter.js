@@ -140,4 +140,8 @@ router.post('/notifyAgent', function (req, res, next) {
 });
 
 
+router.get('/hello', function (req, res, next) {
+    res.status(201).json({msg: 'Agent Service'})
+});
+
 module.exports = router;
