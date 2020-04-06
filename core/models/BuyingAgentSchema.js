@@ -2,6 +2,7 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
 var BuyingAgentSchema = new Schema({
+    id: String,
     companyID: String,
     agentName: String,
     maxContractAmount: {

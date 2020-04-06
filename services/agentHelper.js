@@ -266,7 +266,7 @@ let AgentHelper = {
             agent.lastActive = "-";
             agent.isActive = true;
             agent.isDeleted = false;
-        } else if (isNew) {
+        } else {
             agent.id = body.id;
         }
         return agent;
