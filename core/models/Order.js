@@ -1,5 +1,11 @@
 let order = {
     "additionalDocumentReference": [],
+    "buyerCustomerParty": {
+        "party": {}
+    },
+    "sellerSupplierParty": {
+        "party": {}
+    },
     "contract": [
         {
             "id": "",
