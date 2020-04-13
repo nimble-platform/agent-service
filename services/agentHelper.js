@@ -258,6 +258,9 @@ let AgentHelper = {
         agent.maxNoOneToOne.value = body.maxNoOneToOne.value;
         agent.maxNoOneToOne.unit = body.maxNoOneToOne.unit;
         agent.productNames = body.productNames;
+        agent.categoryNames = body.categoryNames;
+        agent.companyNames = body.companyNames;
+        agent.catalogueName = body.catalogueName;
         agent.maxNoContractPerDay = body.maxNoContractPerDay;
         if (isNew) {
             agent.id = randomstring.generate(12);

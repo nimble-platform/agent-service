@@ -174,7 +174,7 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID) =>
 
 
 
-createOrder('50916', '123118', 'STAGING', 4999, '755d2b9f-9e00-4943-a291-924e36cc0486', 'ff1c8a90-6248-494d-8d12-4292c7b40185');
+// createOrder('50916', '123118', 'STAGING', 4999, '755d2b9f-9e00-4943-a291-924e36cc0486', 'ff1c8a90-6248-494d-8d12-4292c7b40185');
 
 
 

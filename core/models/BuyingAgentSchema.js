@@ -27,6 +27,9 @@ var BuyingAgentSchema = new Schema({
         unit: String
     },
     productNames: [String],
+    categoryNames: [String],
+    companyNames: [String],
+    catalogueName: String,
     isActive: Boolean,
     noOfTransactions: Number,
     lastActive: String,

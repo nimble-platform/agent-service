@@ -53,9 +53,25 @@ const getCatalogue = (async (catID, catalogueName, commodityClassifciation, clas
 });
 
 
-const getCatalogueLine = (() => {
+const getCatalogueLine = ((catalogueID, productID) => {
+    return new Promise((resolve, reject) => {
+        let options = {
+            url: `${configs.baseUrl}/catalog/catalogue/${catalogueID}/catalogueline/${productID}`,
+            headers: {
+                'Authorization': configs.bearer,
+                'Content-Type': 'application/json'
+            },
+        };
 
-
+        request(options, function (err, res, body) {
+            if (err) {
+                console.log('Error :', err);
+                resolve(null);
+                return
+            }
+            resolve(JSON.parse(body));
+        })
+    });
 });
 
 
@@ -120,6 +136,19 @@ let util = {
     },
 
     async purchaseProducts(productList) {
+
+        for (let i = 0; i < productList.length; i++) {
+            let catLine = await getCatalogueLine(productList[i]['catalogueId'], productList[i]['manufactuerItemId']);
+            if (catLine != null) {
+                productList[i]['catLine'] = catLine;
+            }
+        }
+
+        // purchase 50 units
+        // will give buyer and seller data
+        // http://nimble-staging.salzburgresearch.at/identity/company-settings/50916/negotiation/
+        // can get dellivery address from here
+        // Request URL: http://nimble-staging.salzburgresearch.at/identity/company-settings/50916
 
     }
 };
