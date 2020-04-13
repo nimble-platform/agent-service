@@ -279,9 +279,9 @@ let AgentService = {
 };
 
 
-cron.schedule("*/30 * * * *", function() {
-    AgentService.startSellAgentProcessing();
-});
+// cron.schedule("*/30 * * * *", function() {
+//     AgentService.startSellAgentProcessing();
+// });
 
 // agentHelper.deleteOrderRequest("4b050bc9-f56e-4faf-b18d-cb96e4f9ca3d");
 

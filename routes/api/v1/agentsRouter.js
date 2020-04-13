@@ -1,5 +1,6 @@
 var express = require('express');
 const agentService = require('../../../services/agentService');
+const buyingAgentService = require('../../../services/BuyingAgentService');
 var router = express.Router();
 var wLogger = require('../../../configs/logger');
 

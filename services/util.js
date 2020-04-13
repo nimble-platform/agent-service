@@ -4,7 +4,59 @@ const sellingAgentSchema = require('../core/models/SellingAgentSchema');
 const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
-const randomstring = require("randomstring");
+const request = require('request');
+
+const getCatalogue = (async (catID, catalogueName, commodityClassifciation, className) => {
+    return new Promise((resolve, reject) => {
+        let options = {
+            url: `${configs.baseUrl}/catalog/catalogue/ubl/${catID}`,
+            headers: {
+                'Authorization': configs.bearer,
+                'Content-Type': 'application/json'
+            },
+        };
+
+        let lowerCase = commodityClassifciation.map(v => v.toLowerCase());
+        let status = false;
+
+        request(options, function (err, res, body) {
+            if (err) {
+                console.log('Error :', err);
+                resolve(status)
+                return
+            }
+
+            let catData = JSON.parse(body);
+            if (!(catalogueName === catData.id)) {
+                resolve(status)
+                return
+            }
+
+            for (let i = 0; i < catData.catalogueLine.length; i++) {
+                let catLines = catData.catalogueLine[i]['goodsItem']['item']['commodityClassification'];
+
+                for (let j = 0; j < catLines.length; j++) {
+                    let catLine = catLines[i];
+                    if (lowerCase.includes(catLine['itemClassificationCode']['name'].toLowerCase())) {
+                        status = true;
+                        break
+                    }
+                }
+                if (status) {
+                    break;
+                }
+            }
+
+            resolve(status);
+        })
+    });
+});
+
+
+const getCatalogueLine = (() => {
+
+
+});
 
 
 let util = {
@@ -50,6 +102,26 @@ let util = {
         }
         return time;
     }),
+
+
+    async filterProducts(products, catalgueName, categories, className) {
+        let includedProducts = [];
+        for (let i = 0; i < products.length; i++) {
+            let product = products[i];
+            let catID = product['catalogueId'];
+
+
+            let isIncluded = await getCatalogue(catID, catalgueName, categories, className);
+            if (isIncluded) {
+                includedProducts.push(product);
+            }
+        }
+        return includedProducts;
+    },
+
+    async purchaseProducts(productList) {
+
+    }
 };
 
 
