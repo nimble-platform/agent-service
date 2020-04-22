@@ -2,45 +2,13 @@ const loggerWinston = require('../configs/logger');
 const configs = require('../configs/config');
 const sellingAgentSchema = require('../core/models/SellingAgentSchema');
 const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
+const orderBASchema = require('../core/models/OrdersInitiatedBA');
 const Order = require('../core/models/Order');
 const request = require('request');
 const utils = require('./util');
 const axios = require('axios');
-
-let BuyingAgentService = {
-
-    searchForProducts: ((productName, catName, categoriesNames, className) => {
-        let data = {
-            "sort": ["score desc"],
-            "rows": 12,
-            "start": 0,
-            "q": `(*${productName}*)`
-        };
-
-        let options = {
-            url: `${configs.baseUrl}/index/item/search`,
-            headers: {
-                'Authorization': configs.bearer,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        };
-
-
-        request.post(options, async function (err, res, body) {
-            if (err) {
-                console.log('Error :', err);
-                return
-            }
-            let productList = JSON.parse(body);
-            let includedProducts = await utils.filterProducts(productList['result'], catName, categoriesNames, className);
-            await utils.purchaseProducts(includedProducts);
-        })
-    })
-
-};
-
-// BuyingAgentService.searchForProducts('niros piano', 'Music', ['Musical instrument'], 'eClass');
+const agentService = require('./agentService')
+const agentHelper = require('./agentHelper')
 
 const getCompanySettings = (async (companyID) => {
     try {
@@ -121,7 +89,7 @@ const processDocument = (async (order) => {
 });
 
 
-const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID) => {
+const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, value) => {
     try {
         let sellerCompanySettings = await getCompanySettings(sellerID);
         let buyerCompanySettings = await getCompanySettings(buyerID);
@@ -137,7 +105,7 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID) =>
         let catLine = await getCatalogueLine(catID, pID);
 
         // TODO calculate value for qty
-        let totalValue = "37550.00";
+        let totalValue = toString(value);
 
         Order.orderLine[0].lineItem.clause = contract.data;
         Order.orderLine[0].lineItem.deliveryTerms.deliveryLocation.address = buyerCompanySettings.data.company.postalAddress;
@@ -171,6 +139,102 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID) =>
         throw e
     }
 });
+
+
+const searchForProducts = ((productName) => {
+    return new Promise((resolve, reject) => {
+        let data = {
+            "sort": ["score desc"],
+            "rows": 4,
+            "start": 0,
+            "q": `${productName}`
+        };
+
+        let options = {
+            url: `${configs.baseUrl}/index/item/search`,
+            headers: {
+                'Authorization': configs.bearer,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        };
+
+
+        request.post(options, async function (err, res, body) {
+            if (err) {
+                console.log('Error :', err);
+                reject();
+            }else {
+                resolve(JSON.parse(body));
+            }
+        })
+    });
+
+});
+
+const createQuery = ((productNames) => {
+    let q = `en_label:*${productNames[0]}*`;
+
+    if (productNames.length > 1) {
+        for (let i = 1; i < productNames.length; i++) {
+            q = `${q} OR en_label:*${productNames[i]}*`
+        }
+    }
+
+    return `(${q})`;
+});
+
+
+const startBuyingAgentProcessing = (async () => {
+    try {
+        let results = await buyingAgentSchema.find({isDeleted: false}).exec();
+        let agents = [];
+
+        for (let i = 0; i < results.length; i++) {
+            let agent = await agentHelper.getTodayTransactionLimitForBA(results[i].toJSON());
+            let productList = await searchForProducts(createQuery(agent.productNames), agent.catalogueName, agent.categoryNames);
+            let includedProducts = await utils.filterProducts(productList['result'], agent.catalogueName, agent.categoryNames, 'eClass');
+
+            // If the included products are zero then stop processing the request
+            if (includedProducts.length === 0) {
+                continue;
+            }
+
+            productList = await utils.getPriceOptions(includedProducts, agent);
+
+            for (let j = 0; j < productList.length; j++) {
+                if (productList[i][purchase]) {
+                    let sellerID = productList[i]['cat']['providerParty']['partyIdentification'][0]['id'];
+                    let buyerID = agent['companyID'];
+                    let federationID = 'STAGING';
+                    let qty = productList[i]['bestPrice']['qty'];
+                    let value = productList[i]['bestPrice']['value'];
+                    let catID = productList[i]['catalogueId'];
+                    let pID = productList[i]['manufactuerItemId'];
+                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value);
+                }
+            }
+
+
+            agents.push(agent.toJSON());
+        }
+
+    }catch (err) {
+        console.log(`error occurred while procurring the products via BA err: ${err}`)
+    }
+});
+
+
+
+
+startBuyingAgentProcessing();
+
+let BuyingAgentService = {
+
+};
+
+// BuyingAgentService.searchForProducts('niros piano', 'Music', ['Musical instrument'], 'eClass');
+
 
 
 

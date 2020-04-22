@@ -17,18 +17,21 @@ const getCatalogue = (async (catID, catalogueName, commodityClassifciation, clas
         };
 
         let lowerCase = commodityClassifciation.map(v => v.toLowerCase());
-        let status = false;
+        let response = {
+            status: false,
+            cat: {}
+        };
 
         request(options, function (err, res, body) {
             if (err) {
                 console.log('Error :', err);
-                resolve(status)
+                resolve(response);
                 return
             }
 
             let catData = JSON.parse(body);
-            if (!(catalogueName === catData.id)) {
-                resolve(status)
+            if (!(catalogueName.toUpperCase() === catData.id.toUpperCase())) {
+                resolve(response);
                 return
             }
 
@@ -38,16 +41,17 @@ const getCatalogue = (async (catID, catalogueName, commodityClassifciation, clas
                 for (let j = 0; j < catLines.length; j++) {
                     let catLine = catLines[i];
                     if (lowerCase.includes(catLine['itemClassificationCode']['name'].toLowerCase())) {
-                        status = true;
+                        response.status = true;
+                        response.cat = catData;
                         break
                     }
                 }
-                if (status) {
+                if (response.status) {
                     break;
                 }
             }
 
-            resolve(status);
+            resolve(response);
         })
     });
 });
@@ -72,6 +76,16 @@ const getCatalogueLine = ((catalogueID, productID) => {
             resolve(JSON.parse(body));
         })
     });
+});
+
+const getMaxQuantityToBuy = ((qtyMax, priceMax, catLine) => {
+    let perUnitCost = catLine['requiredItemLocationQuantity']['price']['priceAmount']['value'];
+    let qty = Math.min(
+        Math.floor(priceMax / perUnitCost),
+        qtyMax
+    );
+
+    return {qty: qty, value: perUnitCost}
 });
 
 
@@ -121,35 +135,38 @@ let util = {
 
 
     async filterProducts(products, catalgueName, categories, className) {
-        let includedProducts = [];
-        for (let i = 0; i < products.length; i++) {
-            let product = products[i];
-            let catID = product['catalogueId'];
+        return new Promise(async (resolve, reject) => {
+            let includedProducts = [];
+            for (let i = 0; i < products.length; i++) {
+                let product = products[i];
+                let catID = product['catalogueId'];
 
-
-            let isIncluded = await getCatalogue(catID, catalgueName, categories, className);
-            if (isIncluded) {
-                includedProducts.push(product);
+                let response = await getCatalogue(catID, catalgueName, categories, className);
+                if (response.status) {
+                    product.cat = response.cat;
+                    includedProducts.push(product);
+                }
             }
-        }
-        return includedProducts;
+            resolve(includedProducts)
+        });
     },
 
-    async purchaseProducts(productList) {
+    async getPriceOptions(productList, agent) {
 
         for (let i = 0; i < productList.length; i++) {
             let catLine = await getCatalogueLine(productList[i]['catalogueId'], productList[i]['manufactuerItemId']);
             if (catLine != null) {
                 productList[i]['catLine'] = catLine;
+                productList[i]['bestPrice'] = getMaxQuantityToBuy(agent['maxUnits'], agent['maxTotal'], catLine);
             }
         }
 
-        // purchase 50 units
-        // will give buyer and seller data
-        // http://nimble-staging.salzburgresearch.at/identity/company-settings/50916/negotiation/
-        // can get dellivery address from here
-        // Request URL: http://nimble-staging.salzburgresearch.at/identity/company-settings/50916
+        // TODO optimize cost
+        for (let i = 0; i < productList.length; i++) {
+            productList[i]['purchase'] = true;
+        }
 
+        return productList;
     }
 };
 

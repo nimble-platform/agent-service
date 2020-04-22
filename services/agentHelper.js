@@ -3,6 +3,7 @@ const configs = require('../configs/config');
 const sellingAgentSchema = require('../core/models/SellingAgentSchema');
 const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
+const orderBASchema = require('../core/models/OrdersInitiatedBA');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
 const randomstring = require("randomstring");
 const utils = require("./util");
@@ -36,14 +37,29 @@ const getOrders = ((id, lt, gt) => {
     return new Promise((resolve, reject) => {
         saOrderApproved.find({agentID: id, timeStamp: {$lt: lt, $gt: gt}}).exec(function (err, agent) {
             if (err) {
-                loggerWinston.error('couldnt get all selling agents', {error: err});
-                reject(new CustomError('couldnt get all selling agents', err))
+                loggerWinston.error('couldnt get orders placed by selling agent', {error: err});
+                reject(new CustomError('couldnt get orders placed by selling agent', err))
             } else {
                 resolve(agent)
             }
         });
     })
 });
+
+const getBAInitiatedOrders = ((id, lt, gt) => {
+    return new Promise((resolve, reject) => {
+        orderBASchema.find({agentID: id, timeStamp: {$lt: lt, $gt: gt}}).exec(function (err, agent) {
+            if (err) {
+                loggerWinston.error('couldnt get orders placed by selling agent', {error: err});
+                reject(new CustomError('couldnt get orders placed by selling agent', err))
+            } else {
+                resolve(agent)
+            }
+        });
+    })
+});
+
+
 
 let AgentHelper = {
 
@@ -274,6 +290,33 @@ let AgentHelper = {
         }
         return agent;
     },
+
+    getTodayTransactionLimitForBA: ((agent) => {
+        return new Promise((resolve, reject) => {
+            getBAInitiatedOrders(agent.id, utils.getToNightTimeStamp(), utils.getTodayMorningTimeStamp()).then((saOrders) => {
+                agent['maxTotal'] = 0;
+                agent['maxUnits'] = 0;
+                let orderPerDay = saOrders.length;
+                if (!(orderPerDay < Number(agent.maxNoContractPerDay))) {
+                    resolve(agent);
+                    return;
+                }
+
+                let qty = 0;
+                let total = 0;
+                saOrders.forEach((saOrder) => {
+                    saOrder = saOrder.toJSON();
+                    qty += Number(saOrder.payload.orderLine[0].lineItem.quantity.value);
+                    total += Number(saOrder.payload.anticipatedMonetaryTotal.payableAmount.value);
+                });
+
+                agent.maxUnits = (agent.maxVolume.value < qty) ? 0 : agent.maxVolume.value - qty;
+                agent.maxTotal = (agent.maxContractAmount.value < total)? 0 : agent.maxContractAmount.value - total;
+
+                resolve(agent);
+            })
+        });
+    }),
 
     checkIfUnderTheTransactionLimit: ((order, agent) => {
         return new Promise((resolve, reject) => {

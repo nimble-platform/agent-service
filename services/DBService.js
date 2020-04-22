@@ -12,7 +12,7 @@ let DBService = {
             let agentSchema = null;
             if (agentType === 'SELLING_AGENT') {
                 agentSchema = sellingAgentSchema;
-            }else if (agentSchema === 'BUYING_AGENT') {
+            }else if (agentType === 'BUYING_AGENT') {
                 agentSchema = buyingAgentSchema;
             }
 
