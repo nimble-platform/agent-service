@@ -278,6 +278,7 @@ let AgentHelper = {
         agent.companyNames = body.companyNames;
         agent.catalogueName = body.catalogueName;
         agent.maxNoContractPerDay = body.maxNoContractPerDay;
+        agent.priceRisk = body.priceRisk;
         if (isNew) {
             agent.id = randomstring.generate(12);
             agent.companyID = body.companyID;

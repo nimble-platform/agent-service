@@ -18,6 +18,7 @@ var BuyingAgentSchema = new Schema({
         unit: String
     },
     maxNoContractPerDay: String,
+    priceRisk: Number,
     maxVolume: {
         value: Number,
         unit: String

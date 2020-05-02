@@ -7,8 +7,8 @@ const Order = require('../core/models/Order');
 const request = require('request');
 const utils = require('./util');
 const axios = require('axios');
-const agentService = require('./agentService')
-const agentHelper = require('./agentHelper')
+const agentService = require('./agentService');
+const agentHelper = require('./agentHelper');
 
 const getCompanySettings = (async (companyID) => {
     try {
@@ -80,8 +80,7 @@ const processDocument = (async (order) => {
             data: order
         };
 
-        let res =  await axios(config);
-        console.log(res);
+        return await axios(config);
     } catch (error) {
         console.log(error.response.body);
         throw error;
@@ -89,7 +88,7 @@ const processDocument = (async (order) => {
 });
 
 
-const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, value) => {
+const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, totalString, additionalItemProperty) => {
     try {
         let sellerCompanySettings = await getCompanySettings(sellerID);
         let buyerCompanySettings = await getCompanySettings(buyerID);
@@ -104,16 +103,20 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, va
 
         let catLine = await getCatalogueLine(catID, pID);
 
-        // TODO calculate value for qty
-        let totalValue = toString(value);
+        let totalValue = totalString;
 
         Order.orderLine[0].lineItem.clause = contract.data;
-        Order.orderLine[0].lineItem.deliveryTerms.deliveryLocation.address = buyerCompanySettings.data.company.postalAddress;
+
+        if (additionalItemProperty) {
+            Order.orderLine[0].lineItem.deliveryTerms.deliveryLocation.address = buyerCompanySettings.data.company.postalAddress;
+        }
+
         Order.orderLine[0].lineItem.quantity.value = qty;
 
         delete catLine.data.goodsItem.item['hjid'];
 
         Order.orderLine[0].lineItem.item = catLine.data.goodsItem.item;
+        Order.orderLine[0].lineItem.item.additionalItemProperty = catLine.data.goodsItem.item;
         Order.orderLine[0].lineItem.lineReference[0]['lineID'] = pID;
         Order.orderLine[0].lineItem.price = catLine.data.requiredItemLocationQuantity.price;
 
@@ -131,7 +134,7 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, va
             }
         };
         Order.id = utils.generateUUID();
-        let res = processDocument(Order);
+        let res = await processDocument(Order);
 
         // TODO if success save process ID for negotiations
         console.log(res);
@@ -141,7 +144,7 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, va
 });
 
 
-const searchForProducts = ((productName) => {
+const searchForProducts = (async (productName) => {
     return new Promise((resolve, reject) => {
         let data = {
             "sort": ["score desc"],
@@ -203,20 +206,21 @@ const startBuyingAgentProcessing = (async () => {
             productList = await utils.getPriceOptions(includedProducts, agent);
 
             for (let j = 0; j < productList.length; j++) {
-                if (productList[i][purchase]) {
+                if (productList[i]['purchase']) {
                     let sellerID = productList[i]['cat']['providerParty']['partyIdentification'][0]['id'];
                     let buyerID = agent['companyID'];
                     let federationID = 'STAGING';
                     let qty = productList[i]['bestPrice']['qty'];
-                    let value = productList[i]['bestPrice']['value'];
+                    let value = productList[i]['bestPrice']['totalString'];
                     let catID = productList[i]['catalogueId'];
                     let pID = productList[i]['manufactuerItemId'];
-                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value);
+                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value).then((processData) => {
+                        // TODO save the process data
+                    }).catch((err) => {
+                        console.log('error when creating the contract')
+                    })
                 }
             }
-
-
-            agents.push(agent.toJSON());
         }
 
     }catch (err) {
@@ -227,7 +231,7 @@ const startBuyingAgentProcessing = (async () => {
 
 
 
-startBuyingAgentProcessing();
+// startBuyingAgentProcessing();
 
 let BuyingAgentService = {
 
