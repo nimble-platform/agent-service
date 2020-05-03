@@ -121,7 +121,7 @@ const getCatalogue = (async (catID, catalogueName, commodityClassifciation, clas
                 let catLines = catData.catalogueLine[i]['goodsItem']['item']['commodityClassification'];
 
                 for (let j = 0; j < catLines.length; j++) {
-                    let catLine = catLines[i];
+                    let catLine = catLines[j];
                     if (lowerCase.includes(catLine['itemClassificationCode']['name'].toLowerCase())) {
                         response.status = true;
                         response.cat = catData;
@@ -253,12 +253,11 @@ const getRatings = (async (partyID) => {
         return ratingOverall;
     } catch (error) {
         console.log(error);
-        throw error;
+        return 0;
     }
 
 });
 
-getRatings("10736");
 
 let util = {
     generateUUID: () => {
@@ -327,7 +326,7 @@ let util = {
             let catLine = await getCatalogueLine(productList[i]['catalogueId'], productList[i]['manufactuerItemId']);
             if (catLine != null) {
                 productList[i]['catLine'] = catLine;
-                productList[i]['rating'] = await getRatings();
+                productList[i]['rating'] = Number(await getRatings(productList[i]['manufacturer']['id']));
                 productList[i]['discounts'] = await getApplicableDiscounts(catLine);
                 let discount = await calculateTotalDiscount(productList[i]['discounts']);
                 let tax = await getTaxPercentage(catLine);
@@ -335,22 +334,43 @@ let util = {
             }
         }
 
+        let finalList = [];
 
-        if (productList.length.length === 1) {
+        if (productList.length === 1) {
+            productList[0]['purchase'] = true;
             return productList;
-        }else if (1 < productList.length.length) {
+        }else if (1 < productList.length) {
             let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(productList)));
             let trustSorted = sortByTrust(JSON.parse(JSON.stringify(productList)));
 
-            // TODO optimize using cost and trust
+            if (agent.priceRisk === 100) {
+                finalList.push(unitsSorted[unitsSorted.length - 1]);
+            }else {
+                let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(productList)));
+                let trustSorted = sortByTrust(JSON.parse(JSON.stringify(productList)));
+
+                let priceQty = Math.floor(unitsSorted[1].bestPrice.qty * (agent.priceRisk / 100));
+                let trustQty = Math.floor(unitsSorted[1].bestPrice.qty * ((100 - agent.priceRisk) / 100));
+
+                if (0 < priceQty) {
+                    let total = unitsSorted[unitsSorted.length - 1]['bestPrice']['value'] * priceQty;
+                    unitsSorted[unitsSorted.length - 1]['bestPrice']['totalString'] = addZeroes(total.toFixed(2));
+                    unitsSorted[unitsSorted.length - 1]['bestPrice']['qty'] = priceQty;
+                    unitsSorted[unitsSorted.length - 1]['purchase'] = true;
+                    finalList.push(unitsSorted[unitsSorted.length - 1])
+                }
+
+                if (0 < trustQty) {
+                    let trustTotal = trustSorted[trustSorted.length - 1]['bestPrice']['value'] * trustQty;
+                    trustSorted[trustSorted.length - 1]['bestPrice']['totalString'] = addZeroes(trustTotal.toFixed(2));
+                    trustSorted[trustSorted.length - 1]['bestPrice']['qty'] = trustQty;
+                    trustSorted[trustSorted.length - 1]['purchase'] = true;
+                    finalList.push(trustSorted[trustSorted.length - 1])
+                }
+            }
         }
 
-
-        for (let i = 0; i < productList.length; i++) {
-            productList[i]['purchase'] = true;
-        }
-
-        return productList;
+        return finalList;
     }
 };
 

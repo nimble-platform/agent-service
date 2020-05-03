@@ -254,7 +254,7 @@ const startBuyingAgentProcessing = (async () => {
     }
 });
 
-// startBuyingAgentProcessing();
+startBuyingAgentProcessing();
 
 let BuyingAgentService = {
 
