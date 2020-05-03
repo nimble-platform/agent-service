@@ -5,6 +5,7 @@ const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
 const request = require('request');
+const axios = require('axios');
 // const catLine1 = require('../core/data/catLine');
 
 
@@ -75,7 +76,7 @@ const calculateTotalDiscount = ((applicableDiscounts) => {
     let totalDiscount = 0;
 
     applicableDiscounts.items.forEach((d) => {
-        if (d['allowanceCharge'][0]['amount']['value']['currencyID'] === "%") {
+        if (d['allowanceCharge'][0]['amount']['currencyID'] === "%") {
             totalDiscount =+ d['allowanceCharge'][0]['amount']['value'];
         }else {
             perUnitDiscount =+ d['allowanceCharge'][0]['amount']['value'];
@@ -183,10 +184,11 @@ const getMaxQuantityToBuy = ((qtyMax, priceMax, catLine, perUnitDiscount, totalD
     }
 
     if(totalDiscount !== null){
-        perUnitCost = perUnitCost - (perUnitCost * (discount/100))
+        perUnitCost = perUnitCost - (perUnitCost * (totalDiscount/100))
     }
 
-    perUnitCost = perUnitCost + (perUnitCost * (tax / 100));
+    let perUnitCostWithoutTax = perUnitCost.toFixed(2);
+    perUnitCost = (perUnitCost + (perUnitCost * (tax / 100))).toFixed(2);
 
     let qty = Math.min(
         Math.floor(priceMax / perUnitCost),
@@ -194,15 +196,69 @@ const getMaxQuantityToBuy = ((qtyMax, priceMax, catLine, perUnitDiscount, totalD
     );
 
     let total = qty * perUnitCost;
-    let totalString = addZeroes(total);
+    let totalString = addZeroes(total.toFixed(2));
+    let netCost = perUnitCostWithoutTax * qty;
+    let netCostString = addZeroes((perUnitCostWithoutTax * qty).toFixed(2));
 
-    return {qty: qty, value: perUnitCost, total: total, totalString: totalString}
+    return {
+        qty: qty,
+        value: perUnitCost,
+        total: total,
+        totalString: totalString,
+        netCost: netCost,
+        netCostString: netCostString,
+        perUnitCostWithoutTax: perUnitCostWithoutTax
+    }
 });
 
 const calculateCompanyRating = ((ratings) => {
     return 5;
 });
 
+
+const getRatings = (async (partyID) => {
+    try {
+        let config = {
+            method: 'get',
+            url: `${configs.baseUrl}/business-process/ratingsSummary?partyId=${partyID}`,
+            headers: {
+                'Authorization': configs.bearer,
+                'Content-Type': 'application/json',
+                'federationId': configs.federationID
+            },
+        };
+
+        let results = await axios(config);
+        let ratings = results.data;
+        let ratingOverall = 0;
+        let ratingSeller;
+        let ratingFulfillment;
+        if (ratings && ratings.totalNumberOfRatings > 0) {
+            ratings.qualityOfNegotiationProcess /= ratings.totalNumberOfRatings;
+            ratings.qualityOfOrderingProcess /= ratings.totalNumberOfRatings;
+            ratings.responseTimeRating /= ratings.totalNumberOfRatings;
+            ratings.listingAccuracy /= ratings.totalNumberOfRatings;
+            ratings.conformanceToContractualTerms /= ratings.totalNumberOfRatings;
+            ratings.deliveryAndPackaging /= ratings.totalNumberOfRatings;
+            ratingSeller = (ratings.qualityOfNegotiationProcess + ratings.qualityOfOrderingProcess + ratings.responseTimeRating) / 3;
+            ratingFulfillment = (ratings.listingAccuracy + ratings.conformanceToContractualTerms) / 2;
+            if (ratings.deliveryAndPackaging > 0) {
+                ratingOverall = (ratingSeller + ratingFulfillment + ratings.deliveryAndPackaging) / 3;
+            } else {
+                ratingOverall = (ratingSeller + ratingFulfillment) / 2;
+            }
+        }
+
+        ratingOverall = ratingOverall.toFixed(2);
+        return ratingOverall;
+    } catch (error) {
+        console.log(error);
+        throw error;
+    }
+
+});
+
+getRatings("10736");
 
 let util = {
     generateUUID: () => {
@@ -271,22 +327,24 @@ let util = {
             let catLine = await getCatalogueLine(productList[i]['catalogueId'], productList[i]['manufactuerItemId']);
             if (catLine != null) {
                 productList[i]['catLine'] = catLine;
-                productList[i]['rating'] = calculateCompanyRating();
-                productList[i]['discounts'] = getApplicableDiscounts(catLine);
-                let discount = calculateTotalDiscount(productList[i]['discounts']);
-                let tax = getTaxPercentage(catLine);
+                productList[i]['rating'] = await getRatings();
+                productList[i]['discounts'] = await getApplicableDiscounts(catLine);
+                let discount = await calculateTotalDiscount(productList[i]['discounts']);
+                let tax = await getTaxPercentage(catLine);
                 productList[i]['bestPrice'] = getMaxQuantityToBuy(agent['maxUnits'], agent['maxTotal'], catLine, discount.perUnitDiscount, discount.totalDiscount, tax);
             }
         }
 
-        let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(productList)));
-        let trustSorted = sortByTrust(JSON.parse(JSON.stringify(productList)));
 
-        // if (productList.length.length === 1) {
-        //     return productList;
-        // }
+        if (productList.length.length === 1) {
+            return productList;
+        }else if (1 < productList.length.length) {
+            let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(productList)));
+            let trustSorted = sortByTrust(JSON.parse(JSON.stringify(productList)));
 
-        // TODO optimize using cost and trust
+            // TODO optimize using cost and trust
+        }
+
 
         for (let i = 0; i < productList.length; i++) {
             productList[i]['purchase'] = true;
@@ -295,6 +353,11 @@ let util = {
         return productList;
     }
 };
+
+const recalculateCost = (() => {
+
+
+});
 
 const getTaxPercentage = ((catLine) => {
     let tax = 0;

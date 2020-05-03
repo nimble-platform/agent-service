@@ -8,5 +8,6 @@ module.exports = {
     'port':process.env.AGENT_PORT,
     'mongoDb': process.env.AGENT_DB,
     "inProduction":false,
-    "bearer": process.env.AGENT_TOKEN
+    "bearer": process.env.AGENT_TOKEN,
+    "federationID": "STAGING"
 };

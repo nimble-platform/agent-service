@@ -88,8 +88,22 @@ const processDocument = (async (order) => {
 });
 
 
-const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, totalString, additionalItemProperty) => {
+const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, totalString, additionalItemProperty, price) => {
     try {
+
+        let priceJson = {
+            "priceAmount": {
+                "value": Number(price.perUnitCostWithoutTax),
+                "currencyID": "EUR",
+            },
+            "baseQuantity": {
+                "value": 1,
+                "unitCode": "item(s)",
+                "unitCodeListID": null,
+            },
+        };
+
+
         let sellerCompanySettings = await getCompanySettings(sellerID);
         let buyerCompanySettings = await getCompanySettings(buyerID);
 
@@ -106,19 +120,17 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
         let totalValue = totalString;
 
         Order.orderLine[0].lineItem.clause = contract.data;
-
-        if (additionalItemProperty) {
-            Order.orderLine[0].lineItem.deliveryTerms.deliveryLocation.address = buyerCompanySettings.data.company.postalAddress;
-        }
-
+        Order.orderLine[0].lineItem.deliveryTerms.deliveryLocation.address = buyerCompanySettings.data.company.postalAddress;
         Order.orderLine[0].lineItem.quantity.value = qty;
 
         delete catLine.data.goodsItem.item['hjid'];
 
         Order.orderLine[0].lineItem.item = catLine.data.goodsItem.item;
-        Order.orderLine[0].lineItem.item.additionalItemProperty = catLine.data.goodsItem.item;
+        if (additionalItemProperty) {
+            Order.orderLine[0].lineItem.item['additionalItemProperty'] = additionalItemProperty;
+        }
         Order.orderLine[0].lineItem.lineReference[0]['lineID'] = pID;
-        Order.orderLine[0].lineItem.price = catLine.data.requiredItemLocationQuantity.price;
+        Order.orderLine[0].lineItem.price = priceJson;
 
         Order.buyerCustomerParty.party = buyerCompanySettings.data.company;
         Order.sellerSupplierParty.party = sellerCompanySettings.data.company;
@@ -129,7 +141,8 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
         // set payment means
         Order.anticipatedMonetaryTotal = {
             "payableAmount": {
-                "value": totalValue,
+                // "value": totalValue,
+                "value": "8110.8",
                 "currencyID": "EUR"
             }
         };
@@ -214,7 +227,20 @@ const startBuyingAgentProcessing = (async () => {
                     let value = productList[i]['bestPrice']['totalString'];
                     let catID = productList[i]['catalogueId'];
                     let pID = productList[i]['manufactuerItemId'];
-                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value).then((processData) => {
+
+                    let discounts = null;
+                    if(productList[i].discounts.items.length !== 0){
+                        discounts = JSON.parse(JSON.stringify(productList[i].discounts.items));
+                        discounts.forEach((d) => {
+                            delete d.allowanceCharge;
+                            delete d.hjid;
+                            delete d.name[0].hjid
+                            delete d.value[0].hjid
+                            delete d.itemClassificationCode.hjid
+                        });
+                    }
+
+                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value, discounts, productList[i]['bestPrice']).then((processData) => {
                         // TODO save the process data
                     }).catch((err) => {
                         console.log('error when creating the contract')
@@ -228,23 +254,11 @@ const startBuyingAgentProcessing = (async () => {
     }
 });
 
-
-
-
 // startBuyingAgentProcessing();
 
 let BuyingAgentService = {
 
 };
 
-// BuyingAgentService.searchForProducts('niros piano', 'Music', ['Musical instrument'], 'eClass');
-
-
-
-
 // createOrder('50916', '123118', 'STAGING', 4999, '755d2b9f-9e00-4943-a291-924e36cc0486', 'ff1c8a90-6248-494d-8d12-4292c7b40185');
-
-
-
-
 module.exports = BuyingAgentService;
