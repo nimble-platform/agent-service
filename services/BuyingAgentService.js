@@ -149,8 +149,9 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
         Order.id = utils.generateUUID();
         let res = await processDocument(Order);
 
-        // TODO if success save process ID for negotiations
-        console.log(res);
+        Order['processData'] = res.data;
+        agentService.notifyAgent(Order);
+        return Order;
     } catch (e) {
         throw e
     }
@@ -240,8 +241,9 @@ const startBuyingAgentProcessing = (async () => {
                         });
                     }
 
-                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value, discounts, productList[i]['bestPrice']).then((processData) => {
-                        // TODO save the process data
+                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value, discounts, productList[i]['bestPrice']).then((order) => {
+                        order['agentID'] = agent.id
+                        agentHelper.addToBAInitiatedOrder(order);
                     }).catch((err) => {
                         console.log('error when creating the contract')
                     })

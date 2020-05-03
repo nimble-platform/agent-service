@@ -5,6 +5,7 @@ const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const buyerOrderSchema = require('../core/models/BuyerOrderSchema');
 const orderBASchema = require('../core/models/OrdersInitiatedBA');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
+const baOrderInitiated = require('../core/models/OrdersInitiatedBA');
 const randomstring = require("randomstring");
 const utils = require("./util");
 
@@ -172,6 +173,27 @@ let AgentHelper = {
             let dataScheme = new saOrderApproved();
             dataScheme.id = orderData.id;
             dataScheme.payload = orderData.payload;
+            dataScheme.timeStamp = utils.getCurrentEpochTime();
+            dataScheme.agentID = orderData.agentID;
+
+
+            dataScheme.save(function (err, agentResults) {
+                if (err) {
+                    loggerWinston.error('error when persisting the new order', {error: err});
+                    reject({msg: 'error when persisting the new order'});
+                } else {
+                    resolve({msg: 'persisted the new order'});
+                }
+            });
+        });
+    }),
+
+
+    addToBAInitiatedOrder: ((orderData) => {
+        return new Promise((resolve, reject) => {
+            let dataScheme = new baOrderInitiated();
+            dataScheme.id = orderData.id;
+            dataScheme.payload = orderData;
             dataScheme.timeStamp = utils.getCurrentEpochTime();
             dataScheme.agentID = orderData.agentID;
 

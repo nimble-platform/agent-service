@@ -5,6 +5,7 @@ const configs = require('../configs/config');
 const sellingAgentSchema = require('../core/models/SellingAgentSchema');
 const buyingAgentSchema = require('../core/models/BuyingAgentSchema');
 const saOrderApproved = require('../core/models/OrdersApprovedSA');
+const baOrderInitiated = require('../core/models/OrdersInitiatedBA');
 const request = require('request');
 const DBService = require('./DBService');
 const agentHelper = require('./agentHelper');
@@ -158,6 +159,19 @@ let AgentService = {
                 if (err) {
                     loggerWinston.error('couldnt get all selling agents', {error: err});
                     reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        })
+    }),
+
+    getBAOrders: ((agentID) => {
+        return new Promise((resolve, reject) => {
+            baOrderInitiated.find({agentID: agentID}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all buying agents', {error: err});
+                    reject(new CustomError('couldnt get all buying agents', err))
                 } else {
                     resolve(agent)
                 }

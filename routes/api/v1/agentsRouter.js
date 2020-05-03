@@ -131,6 +131,13 @@ router.get('/getSAOrders/:agentId', function (req, res, next) {
     });
 });
 
+router.get('/getBAOrders/:agentId', function (req, res, next) {
+    agentService.getBAOrders(req.params.agentId).then((agents) => {
+        res.status(200).json(agents);
+    }).catch((err) => {
+        res.status(400).json({msg: 'error retrieving the results'})
+    });
+});
 
 router.post('/notifyAgent', function (req, res, next) {
     agentService.notifyAgent(req.body).then(() => {
