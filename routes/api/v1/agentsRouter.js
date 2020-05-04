@@ -139,6 +139,22 @@ router.get('/getBAOrders/:agentId', function (req, res, next) {
     });
 });
 
+router.get('/getSAStatus/:processID', function (req, res, next) {
+    agentService.getSAStatus(req.params.processID).then((agents) => {
+        res.status(200).json(agents);
+    }).catch((err) => {
+        res.status(400).json({msg: 'error retrieving the results'})
+    });
+});
+
+router.get('/getBAStatus/:processID', function (req, res, next) {
+    agentService.getBAStatus(req.params.processID).then((agents) => {
+        res.status(200).json(agents);
+    }).catch((err) => {
+        res.status(400).json({msg: 'error retrieving the results'})
+    });
+});
+
 router.post('/notifyAgent', function (req, res, next) {
     agentService.notifyAgent(req.body).then(() => {
         res.status(200).send({msg: 'successfully notified the agent'})
@@ -146,7 +162,6 @@ router.post('/notifyAgent', function (req, res, next) {
         res.status(400).json({msg: 'failed to notify the agent'})
     })
 });
-
 
 router.get('/hello', function (req, res, next) {
     res.status(201).json({msg: 'Agent Service'})

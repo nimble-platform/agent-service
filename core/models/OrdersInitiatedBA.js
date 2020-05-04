@@ -10,4 +10,4 @@ var baInitiatedOrders = new Schema({
     approvedTime: Number
 });
 
-module.exports = mongoose.model('sa-orders-initiated', baInitiatedOrders);
+module.exports = mongoose.model('ba-orders-initiated', baInitiatedOrders);

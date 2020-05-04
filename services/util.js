@@ -211,11 +211,6 @@ const getMaxQuantityToBuy = ((qtyMax, priceMax, catLine, perUnitDiscount, totalD
     }
 });
 
-const calculateCompanyRating = ((ratings) => {
-    return 5;
-});
-
-
 const getRatings = (async (partyID) => {
     try {
         let config = {
@@ -374,10 +369,6 @@ let util = {
     }
 };
 
-const recalculateCost = (() => {
-
-
-});
 
 const getTaxPercentage = ((catLine) => {
     let tax = 0;

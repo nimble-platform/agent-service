@@ -188,7 +188,6 @@ let AgentHelper = {
         });
     }),
 
-
     addToBAInitiatedOrder: ((orderData) => {
         return new Promise((resolve, reject) => {
             let dataScheme = new baOrderInitiated();

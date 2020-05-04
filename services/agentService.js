@@ -180,7 +180,35 @@ let AgentService = {
     }),
 
 
-    notifyAgent: ((buyData) => {
+    getSAStatus: ((processID) => {
+        return new Promise((resolve, reject) => {
+            saOrderApproved.find({"payload.processData.processInstanceID": processID}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all buying agents', {error: err});
+                    reject(new CustomError('couldnt get all buying agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        })
+    }),
+
+
+    getBAStatus: ((processID) => {
+        return new Promise((resolve, reject) => {
+            baOrderInitiated.find({"payload.processData.processInstanceID": processID}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all buying agents', {error: err});
+                    reject(new CustomError('couldnt get all buying agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        })
+    }),
+
+
+    notifyAgent: (async (buyData) => {
         return new Promise((resolve, reject) => {
             if(buyData['processData']['processID'] === "Order"){
                 let partyID = buyData['sellerSupplierParty']['party']['partyIdentification'][0]['id'];

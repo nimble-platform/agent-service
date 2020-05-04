@@ -103,7 +103,6 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
             },
         };
 
-
         let sellerCompanySettings = await getCompanySettings(sellerID);
         let buyerCompanySettings = await getCompanySettings(buyerID);
 
@@ -141,16 +140,17 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
         // set payment means
         Order.anticipatedMonetaryTotal = {
             "payableAmount": {
-                // "value": totalValue,
-                "value": "8110.8",
+                "value": totalValue,
                 "currencyID": "EUR"
             }
         };
         Order.id = utils.generateUUID();
+
         let res = await processDocument(Order);
 
         Order['processData'] = res.data;
-        agentService.notifyAgent(Order);
+        await agentService.notifyAgent(Order);
+
         return Order;
     } catch (e) {
         throw e
@@ -158,6 +158,11 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
 });
 
 
+/**
+ * Function executes the search for products endpoints using the
+ * indexing service
+ * @type {function(*): Promise<*>}
+ */
 const searchForProducts = (async (productName) => {
     return new Promise((resolve, reject) => {
         let data = {
@@ -189,6 +194,11 @@ const searchForProducts = (async (productName) => {
 
 });
 
+
+/**
+ * Function creates the indexing service query to retrive the product names
+ * @type {function(*): string}
+ */
 const createQuery = ((productNames) => {
     let q = `en_label:*${productNames[0]}*`;
 
@@ -202,65 +212,58 @@ const createQuery = ((productNames) => {
 });
 
 
-const startBuyingAgentProcessing = (async () => {
-    try {
-        let results = await buyingAgentSchema.find({isDeleted: false}).exec();
-        let agents = [];
+let BuyingAgentService = {
+    startBuyingAgentProcessing : (async () => {
+        try {
+            let results = await buyingAgentSchema.find({isDeleted: false}).exec();
+            let agents = [];
 
-        for (let i = 0; i < results.length; i++) {
-            let agent = await agentHelper.getTodayTransactionLimitForBA(results[i].toJSON());
-            let productList = await searchForProducts(createQuery(agent.productNames), agent.catalogueName, agent.categoryNames);
-            let includedProducts = await utils.filterProducts(productList['result'], agent.catalogueName, agent.categoryNames, 'eClass');
+            for (let i = 0; i < results.length; i++) {
+                let agent = await agentHelper.getTodayTransactionLimitForBA(results[i].toJSON());
+                let productList = await searchForProducts(createQuery(agent.productNames), agent.catalogueName, agent.categoryNames);
+                let includedProducts = await utils.filterProducts(productList['result'], agent.catalogueName, agent.categoryNames, 'eClass');
 
-            // If the included products are zero then stop processing the request
-            if (includedProducts.length === 0) {
-                continue;
-            }
+                // If the included products are zero then stop processing the request
+                if (includedProducts.length === 0) {
+                    continue;
+                }
 
-            productList = await utils.getPriceOptions(includedProducts, agent);
+                productList = await utils.getPriceOptions(includedProducts, agent);
 
-            for (let j = 0; j < productList.length; j++) {
-                if (productList[i]['purchase']) {
-                    let sellerID = productList[i]['cat']['providerParty']['partyIdentification'][0]['id'];
-                    let buyerID = agent['companyID'];
-                    let federationID = 'STAGING';
-                    let qty = productList[i]['bestPrice']['qty'];
-                    let value = productList[i]['bestPrice']['totalString'];
-                    let catID = productList[i]['catalogueId'];
-                    let pID = productList[i]['manufactuerItemId'];
+                for (let j = 0; j < productList.length; j++) {
+                    if (productList[j]['purchase']) {
+                        let sellerID = productList[j]['cat']['providerParty']['partyIdentification'][0]['id'];
+                        let buyerID = agent['companyID'];
+                        let federationID = 'STAGING';
+                        let qty = productList[j]['bestPrice']['qty'];
+                        let value = productList[j]['bestPrice']['totalString'];
+                        let catID = productList[j]['catalogueId'];
+                        let pID = productList[j]['manufactuerItemId'];
 
-                    let discounts = null;
-                    if(productList[i].discounts.items.length !== 0){
-                        discounts = JSON.parse(JSON.stringify(productList[i].discounts.items));
-                        discounts.forEach((d) => {
-                            delete d.allowanceCharge;
-                            delete d.hjid;
-                            delete d.name[0].hjid
-                            delete d.value[0].hjid
-                            delete d.itemClassificationCode.hjid
-                        });
-                    }
+                        let discounts = null;
+                        if(productList[i].discounts.items.length !== 0){
+                            discounts = JSON.parse(JSON.stringify(productList[j].discounts.items));
+                            discounts.forEach((d) => {
+                                delete d.allowanceCharge;
+                                delete d.hjid;
+                                delete d.name[0].hjid
+                                delete d.value[0].hjid
+                                delete d.itemClassificationCode.hjid
+                            });
+                        }
 
-                    createOrder(sellerID, buyerID, federationID, qty, catID, pID, value, discounts, productList[i]['bestPrice']).then((order) => {
-                        order['agentID'] = agent.id
+                        let order = await createOrder(sellerID, buyerID, federationID, qty, catID, pID, value, discounts, productList[j]['bestPrice']);
+                        order['agentID'] = agent.id;
                         agentHelper.addToBAInitiatedOrder(order);
-                    }).catch((err) => {
-                        console.log('error when creating the contract')
-                    })
+                    }
                 }
             }
+
+        }catch (err) {
+            console.log(`error occurred while procurring the products via BA err: ${err}`)
         }
-
-    }catch (err) {
-        console.log(`error occurred while procurring the products via BA err: ${err}`)
-    }
-});
-
-startBuyingAgentProcessing();
-
-let BuyingAgentService = {
-
+    })
 };
 
-// createOrder('50916', '123118', 'STAGING', 4999, '755d2b9f-9e00-4943-a291-924e36cc0486', 'ff1c8a90-6248-494d-8d12-4292c7b40185');
+// BuyingAgentService.startBuyingAgentProcessing();
 module.exports = BuyingAgentService;
