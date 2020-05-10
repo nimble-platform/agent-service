@@ -127,6 +127,29 @@ let AgentService = {
         });
     },
 
+    updateLastActiveTime: (id, agentType) => {
+        return new Promise((resolve, reject) => {
+
+            let d = new Date();
+            let dformat = [d.getMonth()+1,
+                        d.getDate(),
+                        d.getFullYear()].join('/')+' '+
+                    [d.getHours(),
+                        d.getMinutes(),
+                        d.getSeconds()].join(':');
+
+            let query = {id: id};
+            let param = {
+                $set: {lastActive: dformat}
+            };
+            DBService.upDateAgentAttribute(id, agentType, query, param).then((data) => {
+                resolve(data);
+            }).catch((err) => {
+                reject(err);
+            })
+        });
+    },
+
     getAllSellingAgents: (companyID) => {
         return new Promise((resolve, reject) => {
             sellingAgentSchema.find({companyID: companyID, isDeleted: false}).exec(function (err, agents) {
@@ -296,6 +319,7 @@ let AgentService = {
                                                 if (processDocResponse.status === 'COMPLETED') {
                                                     console.log(`The order has been successfully processed : ${order.id}`);
                                                     agentHelper.deleteOrderRequest(order.id);
+                                                    order['payload']['processData']['processInstanceID'] == 'COMPLETED';
                                                     agentHelper.addToSAProcessedOrder(order);
                                                     agentHelper.incrementSAOrderCount(agent.id);
                                                     // update number of transactions
@@ -324,7 +348,5 @@ let AgentService = {
 // cron.schedule("*/30 * * * *", function() {
 //     AgentService.startSellAgentProcessing();
 // });
-
-// agentHelper.deleteOrderRequest("4b050bc9-f56e-4faf-b18d-cb96e4f9ca3d");
 
 module.exports = AgentService;

@@ -149,8 +149,7 @@ const createOrder = (async (sellerID, buyerID, federationID, qty, catID, pID, to
         let res = await processDocument(Order);
 
         Order['processData'] = res.data;
-        await agentService.notifyAgent(Order);
-
+        let notify = await agentService.notifyAgent(Order);
         return Order;
     } catch (e) {
         throw e
@@ -215,7 +214,7 @@ const createQuery = ((productNames) => {
 let BuyingAgentService = {
     startBuyingAgentProcessing : (async () => {
         try {
-            let results = await buyingAgentSchema.find({isDeleted: false}).exec();
+            let results = await buyingAgentSchema.find({isDeleted: false, isActive: true}).exec();
             let agents = [];
 
             for (let i = 0; i < results.length; i++) {
@@ -255,6 +254,8 @@ let BuyingAgentService = {
                         let order = await createOrder(sellerID, buyerID, federationID, qty, catID, pID, value, discounts, productList[j]['bestPrice']);
                         order['agentID'] = agent.id;
                         agentHelper.addToBAInitiatedOrder(order);
+                        agentHelper.incrementBAOrderCount(agent.id);
+                        agentService.updateLastActiveTime(agent.id, "BUYING_AGENT");
                     }
                 }
             }

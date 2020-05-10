@@ -223,6 +223,20 @@ let AgentHelper = {
     }),
 
 
+    incrementBAOrderCount: ((id) => {
+        return new Promise((resolve, reject) => {
+            buyingAgentSchema.findOneAndUpdate({id: id}, { $inc: { noOfTransactions: 1 }}).exec(function (err, agent) {
+                if (err) {
+                    loggerWinston.error('couldnt get all selling agents', {error: err});
+                    reject(new CustomError('couldnt get all selling agents', err))
+                } else {
+                    resolve(agent)
+                }
+            });
+        });
+    }),
+
+
     getSAProcessedOrder: ((agentID) => {
         return new Promise((resolve, reject) => {
 

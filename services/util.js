@@ -247,7 +247,7 @@ const getRatings = (async (partyID) => {
         ratingOverall = ratingOverall.toFixed(2);
         return ratingOverall;
     } catch (error) {
-        console.log(error);
+        console.log('error occurred white retrieving ratings');
         return 0;
     }
 
@@ -329,21 +329,25 @@ let util = {
             }
         }
 
+        let filteredList = [];
         let finalList = [];
+        for (let k = 0; k < productList.length; k++) {
+            if (productList[k].bestPrice.qty !== 0) {
+                filteredList.push(productList[k]);
+            }
+        }
 
-        if (productList.length === 1) {
-            productList[0]['purchase'] = true;
-            return productList;
-        }else if (1 < productList.length) {
-            let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(productList)));
-            let trustSorted = sortByTrust(JSON.parse(JSON.stringify(productList)));
+        if (filteredList.length === 1) {
+            filteredList[0]['purchase'] = true;
+            return filteredList;
+        }else if (1 < filteredList.length) {
+            let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(filteredList)));
+            let trustSorted = sortByTrust(JSON.parse(JSON.stringify(filteredList)));
 
             if (agent.priceRisk === 100) {
+                unitsSorted[unitsSorted.length - 1]['purchase'] = true;
                 finalList.push(unitsSorted[unitsSorted.length - 1]);
             }else {
-                let unitsSorted = sortByUnits(JSON.parse(JSON.stringify(productList)));
-                let trustSorted = sortByTrust(JSON.parse(JSON.stringify(productList)));
-
                 let priceQty = Math.floor(unitsSorted[1].bestPrice.qty * (agent.priceRisk / 100));
                 let trustQty = Math.floor(unitsSorted[1].bestPrice.qty * ((100 - agent.priceRisk) / 100));
 
@@ -397,11 +401,11 @@ function compareByTrust( a, b ) {
 }
 
 function compareByQty( a, b ) {
-    if ( a.bestPrice.qty < b.bestPrice.qty){
-        return -1;
-    }
-    if ( a.bestPrice.qty > b.bestPrice.qty ){
+    if ( Number(a.bestPrice.perUnitCostWithoutTax) < Number(b.bestPrice.perUnitCostWithoutTax)){
         return 1;
+    }
+    if ( Number(a.bestPrice.perUnitCostWithoutTax) > Number(b.bestPrice.perUnitCostWithoutTax)){
+        return -1;
     }
     return 0;
 }
