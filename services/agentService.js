@@ -345,8 +345,8 @@ let AgentService = {
 };
 
 
-// cron.schedule("*/30 * * * *", function() {
-//     AgentService.startSellAgentProcessing();
-// });
+cron.schedule("*/30 * * * *", function() {
+    AgentService.startSellAgentProcessing();
+});
 
 module.exports = AgentService;

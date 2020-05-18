@@ -266,5 +266,8 @@ let BuyingAgentService = {
     })
 };
 
-// BuyingAgentService.startBuyingAgentProcessing();
+cron.schedule("*/30 * * * *", function() {
+    BuyingAgentService.startBuyingAgentProcessing();
+});
+
 module.exports = BuyingAgentService;

@@ -9,5 +9,5 @@ module.exports = {
     'mongoDb': process.env.AGENT_DB,
     "inProduction":false,
     "bearer": process.env.AGENT_TOKEN,
-    "federationID": "STAGING"
+    "federationID": process.env.FEDERATION_ID
 };
